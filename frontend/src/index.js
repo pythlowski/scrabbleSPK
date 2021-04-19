@@ -1,1 +1,1 @@
-import EntryPage from "./components/EntryPage";
+import App from "./components/App";

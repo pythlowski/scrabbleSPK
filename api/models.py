@@ -11,9 +11,12 @@ def generate_random_code():
             return code
 
 
-# Create your models here.
 class Room(models.Model):
     code = models.CharField(max_length=8, default=generate_random_code, unique=True)
     host = models.CharField(max_length=50, unique=True)
     is_public = models.BooleanField(null=False, default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class DictionaryWord(models.Model):
+    word = models.CharField(max_length=15)

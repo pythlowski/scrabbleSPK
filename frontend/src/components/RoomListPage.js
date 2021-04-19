@@ -1,7 +1,6 @@
-import React, { Component, useEffect, useState } from "react";
-import { render } from "react-dom";
+import React, { useEffect, useState } from "react";
 
-function EntryPage(props) {
+function RoomListPage() {
 
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -21,14 +20,11 @@ function EntryPage(props) {
         <p>HELLO3!</p>
         {loading && <p>Loading data...</p>}
         <ul>
-        {data.map(room => <li key={room.id}>{room.code} - {room.host}</li>)}
+        {data.map(room => <li key={room.id}>{room.code} - {room.host} XD</li>)}
         </ul>
     </div>
     );
   
 }
 
-export default EntryPage;
-
-const container = document.getElementById("app");
-render(<EntryPage />, container);
+export default RoomListPage;
