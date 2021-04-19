@@ -3,7 +3,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .serializers import RoomSerializer
 from .models import Room
-from .models import DictionaryWord
 import time
 import os
 import random
@@ -16,20 +15,29 @@ def roomList(request):
     serializer = RoomSerializer(rooms, many=True)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 def roomDetails(request, pk):
     room = Room.objects.get(id=pk)
     serializer = RoomSerializer(room, many=False)
     return Response(serializer.data)
 
+
 @api_view(['POST'])
 def createRoom(request):
-    serializer = RoomSerializer(data=request.data)
+    if not request.session.exists(request.session.session_key):
+        return Respone('Cannot create a room for a user without a session.')
+
+    serializer_data = request.data
+    serializer_data['host'] = request.session.session_key
+    serializer_data['host_name'] = request.session['nickname']
+    serializer = RoomSerializer(data=serializer_data)
 
     if serializer.is_valid():
         serializer.save()
 
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 def updateRoom(request, pk):
@@ -41,6 +49,7 @@ def updateRoom(request, pk):
 
     return Response(serializer.data)
 
+
 @api_view(['DELETE'])
 def deleteRoom(request, pk):
     room = Room.objects.get(id=pk)
@@ -48,21 +57,14 @@ def deleteRoom(request, pk):
 
     return Response('Room deleted.')
 
-@api_view(['GET'])
-def updateDictionary(request):
-    DictionaryWord.objects.all().delete()
-    print("XD")
-    before = DictionaryWord.objects.all().count()
-    start = time.time()
-    DictionaryWord.objects.bulk_create([DictionaryWord(word=word) for word in open(os.path.join(os.path.dirname(os.path.realpath(__file__)),'slowa.txt'), 'r').readlines()])
-    after = DictionaryWord.objects.all().count()
 
-    return Response({'before': before, 'after': after, 'time': time.time() - start})
+@api_view(['POST'])
+def nicknameSession(request):
+    if not request.session.exists(request.session.session_key):
+        request.session.create()
+        request.session['nickname'] = request.data['nickname']
+        print('xD', request.session['nickname'])
 
-
-@api_view(['GET'])
-def getRandomWord(request):
-    start = time.time()
-    words = DictionaryWord.objects.all()
-    word = random.choice(words)
-    return Response({'word': word.word, 'time': time.time() - start})
+        return Response('Session created.')
+    return Response('User already has a session.')
+    

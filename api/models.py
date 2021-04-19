@@ -14,9 +14,9 @@ def generate_random_code():
 class Room(models.Model):
     code = models.CharField(max_length=8, default=generate_random_code, unique=True)
     host = models.CharField(max_length=50, unique=True)
+    host_name = models.CharField(max_length=50)
+    current_players = models.IntegerField(default=1)
+    max_players = models.IntegerField(default=4)
     is_public = models.BooleanField(null=False, default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-
-class DictionaryWord(models.Model):
-    word = models.CharField(max_length=15)

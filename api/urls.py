@@ -7,6 +7,5 @@ urlpatterns = [
     path('room-create/', views.createRoom, name='room-create'),
     path('room-update/<str:pk>/', views.updateRoom, name='room-update'),
     path('room-delete/<str:pk>/', views.deleteRoom, name='room-delete'),
-    path('dictionary-update/', views.updateDictionary, name='dictionary-update'),
-    path('random-word/', views.getRandomWord, name='random-word')
+    path('nickname-session/', views.nicknameSession, name='nickname-session')
 ]

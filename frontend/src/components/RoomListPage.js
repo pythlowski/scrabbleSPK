@@ -1,30 +1,74 @@
 import React, { useEffect, useState } from "react";
+import RoomElement from "./RoomElement";
+import { Grid, Button, Typography, Paper, Table, TableContainer, TableHead, TableRow, TableCell, TableBody } from "@material-ui/core";
+import { useHistory } from "react-router-dom";
 
 function RoomListPage() {
 
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(false);
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        setLoading(true);
-        fetch("api/room-list")
-        .then(response => response.json())
-        .then(data => {
-            setData(data);
-            setLoading(false);
-        });
-    }, []);
+  const history = useHistory();
 
-    return ( 
-    <div>
-        <p>HELLO3!</p>
-        {loading && <p>Loading data...</p>}
-        <ul>
-        {data.map(room => <li key={room.id}>{room.code} - {room.host} XD</li>)}
-        </ul>
-    </div>
-    );
-  
+  useEffect(() => {
+    setLoading(true);
+    fetch("api/room-list/")
+    .then(response => response.json())
+    .then(data => {
+      setRooms(data);
+      setLoading(false);
+    });
+  }, []);
+
+  return ( 
+    <Grid container spacing={1}>
+      <Grid item xs={12} align="center">
+        <Typography component="h3" variant="h3">
+          Wszystkie aktywne pokoje gier!
+        </Typography>
+      </Grid>
+
+      <Grid item xs={12} align="center">
+        <Button 
+          color="secondary"
+          variant="contained"
+          onClick={() => history.push("/create", { from: "RoomListPage" })}
+        >
+          Stwórz pokój
+        </Button>      
+      </Grid>
+
+
+      {loading &&
+        <Grid item xs={12} align="center">
+          <Typography component="h4" variant="h4">
+            Ładowanie danych...
+          </Typography>
+        </Grid>
+      }
+      {!loading &&
+        <Grid item xs={12} align="center">
+          <TableContainer component={Paper}>
+            <Table className="rooms-table" aria-label="simple table">
+              <TableHead>
+                <TableRow>
+                  <TableCell></TableCell>
+                  <TableCell align="right">Kod pokoju</TableCell>
+                  <TableCell align="right">Nazwa pokoju</TableCell>
+                  <TableCell align="right">Gracze</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {rooms.map(room => RoomElement(room))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Grid>
+      }
+    </Grid>
+  );
+
 }
 
 export default RoomListPage;

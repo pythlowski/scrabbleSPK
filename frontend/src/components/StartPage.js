@@ -15,12 +15,12 @@ import {
 function StartPage(props) {
     return (
         <Router>
-        <Switch>
-          <Route exact path="/" component={NicknamePage} />
-          <Route path="/list" component={RoomListPage} />
-          <Route path="/create" component={RoomCreatePage} />
-          <Route path="/room/:roomCode" component={Room} />
-        </Switch>
+          <Switch>
+            <Route exact path="/" component={NicknamePage} />
+            <Route path="/list" component={RoomListPage} />
+            <Route path="/create" component={RoomCreatePage} />
+            <Route path="/room/:roomCode" component={Room} />
+          </Switch>
       </Router>
       );
 }
