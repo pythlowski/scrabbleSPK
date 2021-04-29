@@ -292,21 +292,24 @@ function Room(props) {
 
   return (
     <div id='room'>
-      <div className='inline'>
+      <div className='a1'>
+        
         <h4>{roomCode.current}</h4>
 
         <Board grid={lettersData.grid} lettersPoints={lettersPoints.current} onFieldClick={onFieldClick} />
         <MyLetters letters={lettersData.sevenLetters} lettersPoints={lettersPoints.current} onFieldClick={onFieldClick} />
-      </div>
+        
+        </div>
+      
 
-      <div className='inline'>
-        <div>
+      
+        <div className='a2'>
           {players.map(player => <PlayerElement key={player.nickname} playerName={player.nickname} points={player.points}/> )}
           <button onClick={sendLetters}>POTWIERDŹ</button>
           <button onClick={onTurnSkip}>OPUŚĆ KOLEJKĘ</button>
           <button onClick={onLettersExchange}>WYMIEŃ LITERY</button>
 
-        </div>
+        
       </div>
 
     </div>

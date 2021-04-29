@@ -33,3 +33,30 @@ body {
 #my-letters{
   margin-top: 16px;
 }
+
+#playersList{
+  display: block;
+  top: 200px;
+  right: 0px;
+  width: 450px;
+  /*position: absolute;*/
+}
+
+.a1{
+  width: 50%;
+  min-width: 600px;
+  float: left;
+ 
+ 
+
+}
+.a2 {
+  width: 50%;
+    
+    float: right;
+    
+   
+  
+  }
+  
+  

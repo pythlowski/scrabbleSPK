@@ -74,18 +74,26 @@
 .letter {
   font-size: 20px;
   text-align: center;
+  /*position: absolute;
+  z-index: 1; */
 }
 
 .points {
+  
   font-size: 16px;
+  bottom: 7px;
+  right: 0px;
   text-align: right;
+  position: relative;
+
 }
 
 .board {
+  
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
   grid-gap: 0px 0px;
-
+  
 }
 
 .triple-word {
