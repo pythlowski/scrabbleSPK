@@ -1,0 +1,133 @@
+/* .rectangle-normal {
+    border-style: solid;
+    border-color: black;
+    border-width: 1px;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    background: rgb(255, 252, 213);
+  }
+  
+  .rectangle-myLetters {
+    border-style: solid;
+    border-color: black;
+    border-width: 1px;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    background: rgb(255, 252, 213);
+  }
+  
+  
+  .rectangle-bonus {
+    border-style: solid;
+    border-color: black;
+    border-width: 1px;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    background: red;
+  }
+  
+  .rectangle-start {
+    border-style: solid;
+    border-color: black;
+    border-width: 1px;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    background: purple;
+  }
+  
+  .grid-board {
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  
+    grid-gap: 0px 0px;
+    position: fixed;
+    width: 630px;
+    height: 630px;
+    background: rgb(114, 54, 44);
+  
+  }
+  
+  body {
+    background-color: rgb(43, 43, 43);
+  }
+  
+  .lettersList {
+  
+  } */
+
+.square {
+  width: 32px;
+  height: 32px;
+  display: 'inline-block';
+  border: solid 2px darkslategray;
+  float:left;
+  font: bold;
+  text-align: center;
+  overflow: hidden;
+
+}
+
+.letter {
+  font-size: 20px;
+  text-align: center;
+}
+
+.points {
+  font-size: 16px;
+  text-align: right;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  grid-gap: 0px 0px;
+
+}
+
+.triple-word {
+  background-color: #FF0000;
+  color: #870000;
+}
+
+.double-word {
+  background-color: #FE5F31;
+  color: #C03811;
+}
+
+.triple-letter {
+  background-color: #0095FF;
+  color: #005EA1;
+}
+
+.double-letter {
+  background-color: #67C0FF;
+  color: #397BA9;
+}
+
+.filled {
+  background-color: #FFF891;
+}
+
+.filled-unconfirmed {
+  background-color: #F39EFF;
+}
+
+.empty {
+  background-color: #3FCF79;
+}
+
+.empty-in-hand {
+  background-color: yellow;
+}
+
+.selected {
+  background-color: white;
+}
+
+#room {
+  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+}

@@ -1,12 +1,12 @@
 import React from "react";
 import { render } from "react-dom";
 import StartPage from "./StartPage";
-import RoomListPage from "./RoomListPage";
+import RoomListPage from "./roomList/RoomListPage";
 
 export default function App() {
 
     return (
-        <div className="center">
+        <div>
           <StartPage />
         </div>
       );

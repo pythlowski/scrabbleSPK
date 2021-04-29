@@ -21,15 +21,18 @@ function NicknamePage(props) {
   }
 
   function onNicknameConfirm(e) {
-    const requestOptions = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nickname: nickname }),
-    };
-    fetch("/api/nickname-session/", requestOptions)
-      .then(response => response.json())
-      .then(_ => history.push("/list", { from: "NicknamePage" }));
-      
+    if (nickname){
+      const requestOptions = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname: nickname }),
+      };
+      fetch("/api/nickname-session/", requestOptions)
+        .then(response => response.json())
+        .then(_ => history.push("/list", { from: "NicknamePage" }));
+    } else {
+      alert('Podaj nickname.');
+    }
   }
 
   return (
