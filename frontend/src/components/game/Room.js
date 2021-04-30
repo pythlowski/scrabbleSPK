@@ -225,7 +225,7 @@ function Room(props) {
   }
   
   function lettersHorizontal(letters) {
-    if (letters.length > 1){
+    if (letters.length >= 1){
       if (!letters.slice(1).every(letter => letter.y == letters[0].y)) return [0,0,0];
       return [letters[0].y, letters[0].x, letters.slice(-1)[0].x];
     }
@@ -233,7 +233,7 @@ function Room(props) {
   }
 
   function lettersVertical(letters) {
-    if (letters.length > 1){
+    if (letters.length >= 1){
       if (!letters.slice(1).every(letter => letter.x == letters[0].x)) return [0,0,0];
       return [letters[0].x, letters[0].y, letters.slice(-1)[0].y];
     }
