@@ -63,8 +63,9 @@ def nicknameSession(request):
     if not request.session.exists(request.session.session_key):
         request.session.create()
         request.session['nickname'] = request.data['nickname']
-        print('xD', request.session['nickname'])
-
         return Response('Session created.')
-    return Response('User already has a session.')
+    else:
+        request.session['nickname'] = request.data['nickname']
+        return Response('Session nickname updated.') 
+
     

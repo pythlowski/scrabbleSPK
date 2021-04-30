@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import RoomElement from "./RoomElement";
-import { Grid, Button, Typography, Paper, Table, TableContainer, TableHead, TableRow, TableCell, TableBody } from "@material-ui/core";
+import { Grid, Button, TextField, Typography, Paper, Table, TableContainer, TableHead, TableRow, TableCell, TableBody } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
 
 function RoomListPage() {
 
   const [rooms, setRooms] = useState([]);
+  const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   const history = useHistory();
@@ -20,12 +21,36 @@ function RoomListPage() {
     });
   }, []);
 
+  function onRoomCodeChange(e) {
+    setRoomCode(e.target.value);
+  }
+
+  function onCustomRoomCodeJoin(e) {
+    history.push(`/room/${roomCode.trim()}`, { from: "RoomListPage" })
+  }
+
   return ( 
     <Grid container spacing={1}>
       <Grid item xs={12} align="center">
         <Typography component="h3" variant="h3">
           Wszystkie aktywne pokoje gier!
         </Typography>
+      </Grid>
+
+      <Grid item xs={12} align="center">
+        <Grid container spacing={2}>
+          <TextField
+            value={roomCode}
+            onChange={onRoomCodeChange}
+          />
+
+          <Button 
+            color="primary" 
+            variant="contained"
+            onClick={onCustomRoomCodeJoin}>
+              DOŁĄCZ
+          </Button>
+        </Grid>
       </Grid>
 
       {loading &&

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useReducer } from 'react';
 import Board from './Board.js';
 import MyLetters from './MyLetters.js';
 import PlayerElement from './PlayerElement.js';
-import { TextField, Button, Grid } from "@material-ui/core";
 
 const ACTIONS = {
   INIT: 0,
@@ -45,7 +44,14 @@ function reducer(lettersData, action){
       }
       return {grid: newGrid, sevenLetters: newSevenLetters};
     case ACTIONS.UPDATE_GRID:
-      return {grid: gridDataFromArray2D(action.grid), sevenLetters: sevenLetters}
+      console.log('Got new letters, updating confirmed on grid!')
+      var newGrid = lettersData.grid;
+      action.newLetters.forEach(letterObject => {
+        newGrid[letterObject.y][letterObject.x].letter = letterObject.letter;
+        newGrid[letterObject.y][letterObject.x].confirmed = true;
+      })
+      return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
+
     case ACTIONS.UPDATE_HAND:
       return {grid: grid, sevenLetters: action.sevenLetters}
     default:
@@ -81,7 +87,6 @@ function sevenDataFromArray2D(array){
 }
 
 function Room(props) {
-  console.log('render :)')
   const [players, setPlayers] = useState([]);
   const roomCode = useRef(props.match.params.roomCode);
   const socketRef = useRef();
@@ -101,22 +106,21 @@ function Room(props) {
     // let startGrid = Array.from(Array(15), _ => Array(15).fill({letter: '', wordBonus: 1, letterBonus: 1, confirmed: false }));
     // let startGrid = new Array(15).fill(null).map(()=>new Array(15).fill({letter: '', wordBonus: 1, letterBonus: 1, confirmed: false }));
     
-    setPlayers([{nickname: 'zbycholud', points: 210}, {nickname: 'zbycholud2', points: 2102}]);
     let gridFromDB = Array.from({ length: 15 }, () => Array.from({ length: 15 }));
     let sevenFromDB = new Array(7);
 
-    gridFromDB[10][5] = 'A';
-    gridFromDB[10][6] = 'B';
-    gridFromDB[10][7] = 'C';
-    gridFromDB[10][8] = 'D';
-    gridFromDB[10][9] = 'Ę';
-    gridFromDB[11][9] = 'Ó';
-    gridFromDB[3][3] = 'O';
+    // gridFromDB[10][5] = 'A';
+    // gridFromDB[10][6] = 'B';
+    // gridFromDB[10][7] = 'C';
+    // gridFromDB[10][8] = 'D';
+    // gridFromDB[10][9] = 'Ę';
+    // gridFromDB[11][9] = 'Ó';
+    // gridFromDB[3][3] = 'O';
 
     sevenFromDB[0] = 'A';
-    sevenFromDB[1] = 'I';
-    sevenFromDB[2] = 'D';
-    sevenFromDB[3] = 'S';
+    sevenFromDB[1] = 'B';
+    sevenFromDB[2] = 'C';
+    sevenFromDB[3] = 'D';
 
     var startGrid = gridDataFromArray2D(gridFromDB);
     var startSevenLetters = sevenDataFromArray2D(sevenFromDB);
@@ -146,7 +150,23 @@ function Room(props) {
 
     socketRef.current.onmessage = e => {
       const data = JSON.parse(e.data);
+      const message = data['message'];
       console.log(data)
+
+      if (message == 'init') {
+        const data = JSON.parse(e.data);
+        console.log('init')
+        setPlayers(players => Array.from(data['players']));
+      }
+      else if (message == 'letters') {
+        console.log('nowe literki, zara robie dispatch');
+        dispatch({type: ACTIONS.UPDATE_GRID, newLetters: data['letters']});
+        // update score 
+      }
+      else if (message == 'new_player') {
+        console.log('!!!!!!! dopisuje nowego gracza do listy', data['username']);
+        setPlayers(players => [...players, {username: data['username'], points: 0}])
+      }
     }
 
     socketRef.current.onerror = e => {
@@ -155,8 +175,8 @@ function Room(props) {
   }, []);
 
   useEffect(() => {
-    console.log('lettersData sie zmienilo')
-  }, [lettersData])
+    console.log('nastepuje update listy graczy')
+  }, [players]);
 
   function getAddedLetters() {
     var letters = [];
@@ -235,12 +255,16 @@ function Room(props) {
   }
 
   function lettersTouchConfirmedOnes(letters){
-    return letters.some(letter => {
-      return [[letter.y, letter.x+1], [letter.y, letter.x-1], [letter.y+1, letter.x], [letter.y-1, letter.x]].some(pair => {
-        if (pair[0] >= 0 && pair[0] < 15 && pair[1] >= 0 && pair[1] < 15) return lettersData.grid[pair[0]][pair[1]].confirmed;
-        return false;
+    if (lettersData.grid.every(row => row.every(field => {if (field.confirmed) return field.letter == ""; return true}))) {
+      return letters.some(letter => letter.x == 7 && letter.y == 7);
+    } else {
+      return letters.some(letter => {
+        return [[letter.y, letter.x+1], [letter.y, letter.x-1], [letter.y+1, letter.x], [letter.y-1, letter.x]].some(pair => {
+          if (pair[0] >= 0 && pair[0] < 15 && pair[1] >= 0 && pair[1] < 15) return lettersData.grid[pair[0]][pair[1]].confirmed;
+          return false;
+        });
       });
-    });
+    }
   }
 
   function onFieldClick(e) {
@@ -277,8 +301,10 @@ function Room(props) {
       console.log('correct letters setup!');
       socketRef.current.send(JSON.stringify({
         'message': 'letters',
-        'letters': 'xd'
+        'letters': letters
       }));
+    } else {
+      alert('Nielegalne ustawienie liter!');
     }
   }
 
@@ -304,7 +330,7 @@ function Room(props) {
 
       
         <div className='a2'>
-          {players.map(player => <PlayerElement key={player.nickname} playerName={player.nickname} points={player.points}/> )}
+          {players.map((player, index) => <PlayerElement key={index} playerName={player.username} points={player.points}/> )}
           <button onClick={sendLetters}>POTWIERDŹ</button>
           <button onClick={onTurnSkip}>OPUŚĆ KOLEJKĘ</button>
           <button onClick={onLettersExchange}>WYMIEŃ LITERY</button>
