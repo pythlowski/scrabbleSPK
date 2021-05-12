@@ -52,11 +52,11 @@ body {
 }
 .a2 {
   width: 20%;
-    
     float: left;
-    
-   
-  
   }
+
+.player-with-turn {
+  background-color: yellow;
+}
   
   

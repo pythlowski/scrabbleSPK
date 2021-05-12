@@ -3,6 +3,7 @@ import Board from './Board.js';
 import MyLetters from './MyLetters.js';
 import PlayerElement from './PlayerElement.js';
 
+
 const ACTIONS = {
   INIT: 0,
   SWAP: 1,
@@ -24,24 +25,31 @@ function reducer(lettersData, action){
       var y1 = action.ob1.y;
       var y2 = action.ob2.y;
       
-      if (action.ob1.onBoard && action.ob2.onBoard) {
+      if (action.ob1.onBoard && action.ob2.onBoard && action.myTurn) {
         console.log('swapping on board and on board')
         letterTmp = newGrid[y1][x1].letter;
         newGrid[y1][x1].letter = newGrid[y2][x2].letter;
         newGrid[y2][x2].letter = letterTmp;
 
-      } else if (action.ob1.onBoard && !action.ob2.onBoard) {
+      } else if (action.ob1.onBoard && !action.ob2.onBoard && action.myTurn) {
         console.log('swapping on board and on 7')
         letterTmp = newGrid[y1][x1].letter;
         newGrid[y1][x1].letter = newSevenLetters[x2].letter;
         newSevenLetters[x2].letter = letterTmp;
 
-      } else if (!action.ob1.onBoard && action.ob2.onBoard) {
+      } else if (!action.ob1.onBoard && action.ob2.onBoard && action.myTurn) {
         console.log('swapping on 7 and on board')
         letterTmp = newSevenLetters[x1].letter;
         newSevenLetters[x1].letter = newGrid[y2][x2].letter;
         newGrid[y2][x2].letter = letterTmp;
+
+      } else if (!action.ob1.onBoard && !action.ob2.onBoard) {
+        console.log('swapping on 7 and on 7')
+        letterTmp = newSevenLetters[x1].letter;
+        newSevenLetters[x1].letter = newSevenLetters[x2].letter;
+        newSevenLetters[x2].letter = letterTmp;
       }
+
       return {grid: newGrid, sevenLetters: newSevenLetters};
     case ACTIONS.UPDATE_GRID:
       console.log('Got new letters, updating confirmed on grid!')
@@ -53,7 +61,15 @@ function reducer(lettersData, action){
       return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
 
     case ACTIONS.UPDATE_HAND:
-      return {grid: grid, sevenLetters: action.sevenLetters}
+      var newSevenLetters = lettersData.sevenLetters;
+      for (let i = 0; i < 7; i++){
+        if (!newSevenLetters[i].letter) {
+          newSevenLetters[i] = {
+            letter: action.sevenLetters.shift()
+          }
+        }
+      }
+      return {grid: lettersData.grid, sevenLetters: newSevenLetters}
     default:
       return lettersData;
   }
@@ -88,12 +104,18 @@ function sevenDataFromArray2D(array){
 
 function Room(props) {
   const [players, setPlayers] = useState([]);
+  const playersCount = useRef(0);
+  const [isHost, setHost] = useState(false);
+  const [myTurn, setMyTurn] = useState(false);
+  const [isGameOn, setGameOn] = useState(false);
+  const [inBag, setInBag] = useState(0);
+  const myUsername = useRef('');
   const roomCode = useRef(props.match.params.roomCode);
   const socketRef = useRef();
   const selectedField = useRef(null);
   const lettersPoints = useRef({
-    'A': 1, 'Ą': 5,'B': 3, 'C': 2, 'Ć': 6, 'D': 2, 'E': 1, 'Ę': 5, 'F': 5,'G': 3,'H': 3, 'I': 1, 'J': 3, 'K': 2, 'L': 2, 'Ł': 3, 'M': 2, 'N': 1, 'Ń': 7, 'O': 1, 'Ó': 5,
- 'P': 2, 'R': 1, 'S': 1, 'Ś': 5, 'T': 2, 'U': 3, 'W': 1, 'Y': 2, 'Z': 1, 'Ź': 9, 'Ż': 5, ' ': 0
+    ' ': 0, 'A': 1, 'Ą': 5,'B': 3, 'C': 2, 'Ć': 6, 'D': 2, 'E': 1, 'Ę': 5, 'F': 5,'G': 3,'H': 3, 'I': 1, 'J': 3, 'K': 2, 'L': 2, 'Ł': 3, 'M': 2, 'N': 1, 'Ń': 7, 'O': 1, 'Ó': 5,
+ 'P': 2, 'R': 1, 'S': 1, 'Ś': 5, 'T': 2, 'U': 3, 'W': 1, 'Y': 2, 'Z': 1, 'Ź': 9, 'Ż': 5
   })
   const [lettersData, dispatch] = useReducer(reducer, 
     {
@@ -112,15 +134,17 @@ function Room(props) {
     // gridFromDB[10][5] = 'A';
     // gridFromDB[10][6] = 'B';
     // gridFromDB[10][7] = 'C';
-    // gridFromDB[10][8] = 'D';
-    // gridFromDB[10][9] = 'Ę';
-    // gridFromDB[11][9] = 'Ó';
-    // gridFromDB[3][3] = 'O';
+    // gridFromDB[13][5] = 'A';
+    // gridFromDB[13][6] = 'B';
+    // gridFromDB[13][7] = 'C';
 
-    sevenFromDB[0] = 'A';
-    sevenFromDB[1] = 'B';
-    sevenFromDB[2] = 'C';
-    sevenFromDB[3] = 'D';
+    // sevenFromDB[0] = 'A';
+    // sevenFromDB[1] = 'B';
+    // sevenFromDB[2] = 'C';
+    // sevenFromDB[3] = 'D';
+    // sevenFromDB[4] = 'E';
+    // sevenFromDB[5] = 'F';
+    // sevenFromDB[6] = ' ';
 
     var startGrid = gridDataFromArray2D(gridFromDB);
     var startSevenLetters = sevenDataFromArray2D(sevenFromDB);
@@ -144,6 +168,7 @@ function Room(props) {
       roomCode.current +
       '/'
     )
+
     socketRef.current.onopen = e => {
       console.log('open', e)
     }
@@ -156,17 +181,61 @@ function Room(props) {
       if (message == 'init') {
         const data = JSON.parse(e.data);
         console.log('init')
-        setPlayers(players => Array.from(data['players']));
+        setPlayers(Array.from(data['players']));
+        playersCount.current = data['players'].length;
+
+        setInBag(data['inBag']);
+        if (data['isHost']) {
+          setHost(true);
+          console.log('You are the host');
+        }
+        console.log('setting username');
+        console.log(data['yourUsername']);
+        myUsername.current = data['yourUsername'];
       }
       else if (message == 'letters') {
         console.log('nowe literki, zara robie dispatch');
         dispatch({type: ACTIONS.UPDATE_GRID, newLetters: data['letters']});
-        // update score 
+
+        setPlayers(players => players.map(player => 
+          player.username === data['username'] 
+          ? {...player, points : player.points + data['points']} 
+          : player ));
+        setInBag(inBag => inBag - data['letters'].length)
       }
       else if (message == 'new_player') {
         console.log('!!!!!!! dopisuje nowego gracza do listy', data['username']);
-        setPlayers(players => [...players, {username: data['username'], points: 0}])
+        setPlayers(players => [...players, {username: data['username'], points: 0, theirTurn: false, isHost: data['isHost']}])
+        playersCount.current += 1;
       }
+      else if (message == 'game_start') {
+        console.log('game started');
+        setGameOn(true);
+        setInBag(inBag => inBag - playersCount.current*7);
+      }
+      else if (message == 'turn_change') {
+        console.log('new_turn for player');
+        console.log(data['username']);
+        console.log(myUsername.current);
+        if (data['username'] == myUsername.current) {
+          setMyTurn(true);
+          console.log('MY TURN!');
+        } else {
+          console.log("NOT MY TURN :(");
+        }
+        
+        setPlayers(players => players.map(player => 
+          player.username === data['username'] 
+          ? {...player, theirTurn: true} 
+          : {...player, theirTurn: false}));
+      }
+      else if (message == 'from_bag') {
+        console.log('dostałem litery')
+        console.log(data['letters']);
+        dispatch({type: ACTIONS.UPDATE_HAND, sevenLetters: data['letters']});
+
+      }
+      
     }
 
     socketRef.current.onerror = e => {
@@ -256,7 +325,7 @@ function Room(props) {
 
   function lettersTouchConfirmedOnes(letters){
     if (lettersData.grid.every(row => row.every(field => {if (field.confirmed) return field.letter == ""; return true}))) {
-      return letters.some(letter => letter.x == 7 && letter.y == 7);
+      return letters.length > 1 && letters.some(letter => letter.x == 7 && letter.y == 7)
     } else {
       return letters.some(letter => {
         return [[letter.y, letter.x+1], [letter.y, letter.x-1], [letter.y+1, letter.x], [letter.y-1, letter.x]].some(pair => {
@@ -288,11 +357,19 @@ function Room(props) {
         (selectedField.current.onBoard && !onBoard) ||
         (!selectedField.current.onBoard && onBoard && !lettersData.grid[y][x].confirmed)
       ) {
-        dispatch({type: ACTIONS.SWAP, ob1: selectedField.current, ob2: {y:y, x:x, onBoard: onBoard}});
+
+        dispatch({type: ACTIONS.SWAP, ob1: selectedField.current, ob2: {y:y, x:x, onBoard: onBoard}, myTurn: myTurn});
         selectedField.current.element.classList.remove('selected');
         selectedField.current = null;
       }
     }
+  }
+
+  function onGameStart(){
+    console.log('przyciskam start');
+    socketRef.current.send(JSON.stringify({
+      'message': 'game_start'
+    }));
   }
 
   function sendLetters(){
@@ -303,6 +380,7 @@ function Room(props) {
         'message': 'letters',
         'letters': letters
       }));
+      setMyTurn(false);
     } else {
       alert('Nielegalne ustawienie liter!');
     }
@@ -325,17 +403,34 @@ function Room(props) {
         <Board grid={lettersData.grid} lettersPoints={lettersPoints.current} onFieldClick={onFieldClick} />
         <MyLetters letters={lettersData.sevenLetters} lettersPoints={lettersPoints.current} onFieldClick={onFieldClick} />
         
-        </div>
+      </div>
       
 
       
-        <div className='a2'>
-          {players.map((player, index) => <PlayerElement key={index} playerName={player.username} points={player.points}/> )}
-          <button onClick={sendLetters}>POTWIERDŹ</button>
-          <button onClick={onTurnSkip}>OPUŚĆ KOLEJKĘ</button>
-          <button onClick={onLettersExchange}>WYMIEŃ LITERY</button>
-
+      <div className='a2'>
+        {players.map((player, index) => <PlayerElement key={index} playerName={player.username} points={player.points} theirTurn={player.theirTurn} isHost={player.isHost}/> )}
         
+        {isHost && !isGameOn && 
+          <React.Fragment>
+            <button onClick={onGameStart}>ROZPOCZNIJ GRĘ</button>
+          </React.Fragment>
+        }
+        
+        {!isHost && !isGameOn && 
+          <React.Fragment>
+            <div>Oczekiwanie. Host musi rozpocząć grę.</div>
+          </React.Fragment>
+        }
+
+        {isGameOn && myTurn &&
+          <React.Fragment>
+            <button onClick={sendLetters}>POTWIERDŹ</button>
+            <button onClick={onTurnSkip}>OPUŚĆ KOLEJKĘ</button>
+            <button onClick={onLettersExchange}>WYMIEŃ LITERY</button>            
+          </React.Fragment>
+        } 
+        <div>W worku pozostaje {inBag} liter.</div>
+          
       </div>
 
     </div>

@@ -1,10 +1,10 @@
 import React from 'react';
 import { TextField, Button, Grid, Typography, Paper } from "@material-ui/core";
 
-function PlayerElement({ playerName, points }) {
+function PlayerElement({ playerName, points, theirTurn, isHost }) {
   return (
-    <div id="players">
-      {playerName} - {points}
+    <div className={theirTurn ? 'player-with-turn' : 'player'}>
+      {isHost && '*'}{playerName} - {points}
     </div>
   );
 }
