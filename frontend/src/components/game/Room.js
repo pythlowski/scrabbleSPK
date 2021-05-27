@@ -2,55 +2,57 @@ import React, { useState, useEffect, useRef, useReducer } from 'react';
 import Board from './Board.js';
 import MyLetters from './MyLetters.js';
 import PlayerElement from './PlayerElement.js';
+import BlankSelection from './BlankSelection.js';
 
 
 const ACTIONS = {
   INIT: 0,
-  SWAP: 1,
-  UPDATE_GRID: 2,
-  UPDATE_HAND: 3,
+  UPDATE_GRID: 1,
+  UPDATE_HAND: 2,
+  SWAP_HAND_HAND: 3,
+  SWAP_HAND_BOARD: 4,
+  SWAP_BOARD_BOARD: 5,
+  FILL_BLANK: 6,
 }
 
 function reducer(lettersData, action){
   switch (action.type) {
     case ACTIONS.INIT:
       return {grid: action.grid, sevenLetters: action.sevenLetters};
-    case ACTIONS.SWAP:
-      var newGrid = lettersData.grid;
+
+    case ACTIONS.SWAP_HAND_HAND:
       var newSevenLetters = lettersData.sevenLetters;
-      var letterTmp;
+      var letterTmp = newSevenLetters[action.ob1.x].letter;
+      newSevenLetters[action.ob1.x].letter = newSevenLetters[action.ob2.x].letter;
+      newSevenLetters[action.ob2.x].letter = letterTmp;
 
-      var x1 = action.ob1.x;
-      var x2 = action.ob2.x;
-      var y1 = action.ob1.y;
-      var y2 = action.ob2.y;
-      
-      if (action.ob1.onBoard && action.ob2.onBoard && action.myTurn) {
-        console.log('swapping on board and on board')
-        letterTmp = newGrid[y1][x1].letter;
-        newGrid[y1][x1].letter = newGrid[y2][x2].letter;
-        newGrid[y2][x2].letter = letterTmp;
+      return {grid: lettersData.grid, sevenLetters: newSevenLetters};
 
-      } else if (action.ob1.onBoard && !action.ob2.onBoard && action.myTurn) {
-        console.log('swapping on board and on 7')
-        letterTmp = newGrid[y1][x1].letter;
-        newGrid[y1][x1].letter = newSevenLetters[x2].letter;
-        newSevenLetters[x2].letter = letterTmp;
+    case ACTIONS.SWAP_HAND_BOARD:
+      if (action.myTurn){
+        var newGrid = lettersData.grid;
+        var newSevenLetters = lettersData.sevenLetters;
 
-      } else if (!action.ob1.onBoard && action.ob2.onBoard && action.myTurn) {
-        console.log('swapping on 7 and on board')
-        letterTmp = newSevenLetters[x1].letter;
-        newSevenLetters[x1].letter = newGrid[y2][x2].letter;
-        newGrid[y2][x2].letter = letterTmp;
+        var letterTmp = newSevenLetters[action.ob1.x].letter;
+        newSevenLetters[action.ob1.x].letter = newGrid[action.ob2.y][action.ob2.x].letter;
+        newGrid[action.ob2.y][action.ob2.x].letter = letterTmp;
 
-      } else if (!action.ob1.onBoard && !action.ob2.onBoard) {
-        console.log('swapping on 7 and on 7')
-        letterTmp = newSevenLetters[x1].letter;
-        newSevenLetters[x1].letter = newSevenLetters[x2].letter;
-        newSevenLetters[x2].letter = letterTmp;
+        return {grid: lettersData.grid, sevenLetters: newSevenLetters};
       }
+      return lettersData
 
-      return {grid: newGrid, sevenLetters: newSevenLetters};
+    case ACTIONS.SWAP_BOARD_BOARD:
+      if (action.myTurn){
+        var newGrid = lettersData.grid;
+
+        var letterTmp = newGrid[action.ob1.y][action.ob1.x].letter;
+        newGrid[action.ob1.y][action.ob1.x].letter = newGrid[action.ob2.y][action.ob2.x].letter;
+        newGrid[action.ob2.y][action.ob2.x].letter = letterTmp;
+
+        return {grid: newGrid, sevenLetters: lettersData.sevenLetters};
+      }
+      return lettersData
+
     case ACTIONS.UPDATE_GRID:
       console.log('Got new letters, updating confirmed on grid!')
       var newGrid = lettersData.grid;
@@ -70,6 +72,13 @@ function reducer(lettersData, action){
         }
       }
       return {grid: lettersData.grid, sevenLetters: newSevenLetters}
+
+    case ACTIONS.FILL_BLANK:
+      var newGrid = lettersData.grid;
+      newGrid[action.y][action.x].letter = `b${action.letter}`;
+      console.log(newGrid[action.y][action.x])
+      return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
+
     default:
       return lettersData;
   }
@@ -104,15 +113,21 @@ function sevenDataFromArray2D(array){
 
 function Room(props) {
   const [players, setPlayers] = useState([]);
-  const playersCount = useRef(0);
+  const [blanksData, setBlanks] = useState([]);
   const [isHost, setHost] = useState(false);
   const [myTurn, setMyTurn] = useState(false);
   const [isGameOn, setGameOn] = useState(false);
+  const [fillingBlanks, setFillingBlanks] = useState(false);
+  const [lettersExchanging, setLettersExchanging] = useState(false);
   const [inBag, setInBag] = useState(0);
+  const [toExchange, setToExchange] = useState(new Array(7).fill(false, 0, 7));
+  
+  const playersCount = useRef(0);
   const myUsername = useRef('');
   const roomCode = useRef(props.match.params.roomCode);
   const socketRef = useRef();
   const selectedField = useRef(null);
+
   const lettersPoints = useRef({
     ' ': 0, 'A': 1, 'Ą': 5,'B': 3, 'C': 2, 'Ć': 6, 'D': 2, 'E': 1, 'Ę': 5, 'F': 5,'G': 3,'H': 3, 'I': 1, 'J': 3, 'K': 2, 'L': 2, 'Ł': 3, 'M': 2, 'N': 1, 'Ń': 7, 'O': 1, 'Ó': 5,
  'P': 2, 'R': 1, 'S': 1, 'Ś': 5, 'T': 2, 'U': 3, 'W': 1, 'Y': 2, 'Z': 1, 'Ź': 9, 'Ż': 5
@@ -124,27 +139,14 @@ function Room(props) {
     }
   )
   
+  // console.log(toExchange);
+  // console.log(lettersData.grid)
   useEffect(() => {
     // let startGrid = Array.from(Array(15), _ => Array(15).fill({letter: '', wordBonus: 1, letterBonus: 1, confirmed: false }));
     // let startGrid = new Array(15).fill(null).map(()=>new Array(15).fill({letter: '', wordBonus: 1, letterBonus: 1, confirmed: false }));
     
     let gridFromDB = Array.from({ length: 15 }, () => Array.from({ length: 15 }));
     let sevenFromDB = new Array(7);
-
-    // gridFromDB[10][5] = 'A';
-    // gridFromDB[10][6] = 'B';
-    // gridFromDB[10][7] = 'C';
-    // gridFromDB[13][5] = 'A';
-    // gridFromDB[13][6] = 'B';
-    // gridFromDB[13][7] = 'C';
-
-    // sevenFromDB[0] = 'A';
-    // sevenFromDB[1] = 'B';
-    // sevenFromDB[2] = 'C';
-    // sevenFromDB[3] = 'D';
-    // sevenFromDB[4] = 'E';
-    // sevenFromDB[5] = 'F';
-    // sevenFromDB[6] = ' ';
 
     var startGrid = gridDataFromArray2D(gridFromDB);
     var startSevenLetters = sevenDataFromArray2D(sevenFromDB);
@@ -195,13 +197,15 @@ function Room(props) {
       }
       else if (message == 'letters') {
         console.log('nowe literki, zara robie dispatch');
+        console.log(data['letters'])
         dispatch({type: ACTIONS.UPDATE_GRID, newLetters: data['letters']});
 
         setPlayers(players => players.map(player => 
           player.username === data['username'] 
           ? {...player, points : player.points + data['points']} 
           : player ));
-        setInBag(inBag => inBag - data['letters'].length)
+          let inBagLeft = inBag - data['letters'].length;
+        setInBag(inBagLeft >= 0 ? inBagLeft : 0);
       }
       else if (message == 'new_player') {
         console.log('!!!!!!! dopisuje nowego gracza do listy', data['username']);
@@ -221,6 +225,7 @@ function Room(props) {
           setMyTurn(true);
           console.log('MY TURN!');
         } else {
+          setMyTurn(false);
           console.log("NOT MY TURN :(");
         }
         
@@ -234,6 +239,11 @@ function Room(props) {
         console.log(data['letters']);
         dispatch({type: ACTIONS.UPDATE_HAND, sevenLetters: data['letters']});
 
+      }
+
+      else if (message == 'game_over') {
+        console.log("game over")
+        alert(`Koniec gry! Wygrywa: ${data['winners']} z ${data['points']} pkt!`)
       }
       
     }
@@ -257,6 +267,7 @@ function Room(props) {
         }
       }
     }
+
     return letters;
   }
 
@@ -340,28 +351,51 @@ function Room(props) {
     e.preventDefault();
     // var element = e.currentTarget.firstChild
     var element = e.currentTarget;
-    // const letter = element.innerText;
     var y = element.dataset['y'];
     var x = element.dataset['x'];
     var onBoard = element.dataset['board'] == "true" ? true : false;
-
-    if (selectedField.current == null) {
-      if ((onBoard && !lettersData.grid[y][x].confirmed && lettersData.grid[y][x].letter) || (!onBoard && lettersData.sevenLetters[x].letter)) {
-        element.className += 'selected';
-        selectedField.current = {y:y, x:x, onBoard: onBoard, element: element};
-      }
-    } else if (!(selectedField.current.x == x && selectedField.current.y == y && selectedField.current.onBoard == onBoard)) {
-      if (
-        (selectedField.current.onBoard && onBoard && !lettersData.grid[y][x].confirmed) ||
-        (!selectedField.current.onBoard && !onBoard) ||
-        (selectedField.current.onBoard && !onBoard) ||
-        (!selectedField.current.onBoard && onBoard && !lettersData.grid[y][x].confirmed)
-      ) {
-
-        dispatch({type: ACTIONS.SWAP, ob1: selectedField.current, ob2: {y:y, x:x, onBoard: onBoard}, myTurn: myTurn});
-        selectedField.current.element.classList.remove('selected');
+    
+    if (!lettersExchanging) {
+      if (selectedField.current == null) {
+        if ((onBoard && !lettersData.grid[y][x].confirmed && lettersData.grid[y][x].letter) || (!onBoard && lettersData.sevenLetters[x].letter)) {
+          element.classList.add('selected');
+          selectedField.current = {y:y, x:x, onBoard: onBoard, element: element};
+        }
+      } else if (selectedField.current.x == x && selectedField.current.y == y && selectedField.current.onBoard == onBoard) {
+        selectedField.current.element.classList.remove('selected')
         selectedField.current = null;
+        console.log('klikam to samo drugi raz')
+      } else {
+        if (selectedField.current.onBoard && onBoard && !lettersData.grid[y][x].confirmed) {
+          dispatch({type: ACTIONS.SWAP_BOARD_BOARD, ob1: selectedField.current, ob2: {y:y, x:x}, myTurn: myTurn});
+          selectedField.current.element.classList.remove('selected');
+          selectedField.current = null;
+          console.log('zamieniam na boardzie i na boardzie')
+        } else if (!selectedField.current.onBoard && !onBoard) {
+          dispatch({type: ACTIONS.SWAP_HAND_HAND, ob1: selectedField.current, ob2: {y:y, x:x}});
+          selectedField.current.element.classList.remove('selected');
+          selectedField.current = null;
+        } else if (selectedField.current.onBoard && !onBoard) {
+          dispatch({type: ACTIONS.SWAP_HAND_BOARD, ob1: {y:y, x:x}, ob2: selectedField.current, myTurn: myTurn});
+          selectedField.current.element.classList.remove('selected');
+          selectedField.current = null;
+        } else if (!selectedField.current.onBoard && onBoard && !lettersData.grid[y][x].confirmed) {
+          dispatch({type: ACTIONS.SWAP_HAND_BOARD, ob1: selectedField.current, ob2: {y:y, x:x}, myTurn: myTurn});
+          selectedField.current.element.classList.remove('selected');
+          selectedField.current = null;
+        }
       }
+    } else if (!onBoard) {
+      // if (!toExchange[x]) {
+      //   element.classList.add('selected-to-exchange');
+      // } else {
+      //   element.classList.remove('selected-to-exchange');
+      // }
+      setToExchange(data => data.map((element, index) => 
+        index == x 
+        ? !element 
+        : element ));
+      // zaznaczanie liter do wymiany
     }
   }
 
@@ -373,25 +407,83 @@ function Room(props) {
   }
 
   function sendLetters(){
+    console.log('chcę wysłać litery!!')
     const letters = getAddedLetters();
     if (legalLetters(letters)) {
       console.log('correct letters setup!');
-      socketRef.current.send(JSON.stringify({
-        'message': 'letters',
-        'letters': letters
-      }));
-      setMyTurn(false);
+
+      var blanks = letters.filter(letter => letter.letter == ' ');
+        if (blanks.length) {
+          console.log('Są jakieś niewypełnione blanki!')
+          if (!fillingBlanks){
+            console.log('Pierwsza próba wysłania, teraz pojawią się pola do wybrania liter')
+            setFillingBlanks(true);
+            setBlanks(blanks);
+          }
+        }
+        else {
+          console.log('All OK, sending letters to the server!');
+          socketRef.current.send(JSON.stringify({
+            'message': 'letters',
+            'letters': letters
+          }));
+          setFillingBlanks(false);
+          setBlanks([]);
+          setMyTurn(false);
+        }
     } else {
       alert('Nielegalne ustawienie liter!');
     }
   }
 
   function onTurnSkip(){
-    // send to ws skip
+    socketRef.current.send(JSON.stringify({
+      'message': 'turn_skip'
+    }));
   }
 
   function onLettersExchange(){
-    // send to ws and get new letters 
+    setLettersExchanging(true);
+    console.log('wymieniam litery')
+    // wszystkie litery nie confirmed z boarda wrzuć na rękę
+  }
+
+  function sendLettersToExchange() {
+    var lettersToExchange = [];
+    
+    for (let i = 0; i < 7; i++) {
+      if(toExchange[i]) {
+        lettersToExchange.push(lettersData.sevenLetters[i].letter);
+      }
+    }
+    
+    if (lettersToExchange.length == 0) {
+      alert('Nie wybrano liter.');
+    }
+    else if (lettersToExchange.length <= inBag) {
+      
+      socketRef.current.send(JSON.stringify({
+        'message': 'letters_exchange',
+        'letters': lettersToExchange
+      }));
+      
+      for (let i = 0; i < 7; i++) {
+        if(toExchange[i]) {
+          lettersData.sevenLetters[i] = {letter: ''};
+        }
+      }
+
+      setToExchange(new Array(7).fill(false, 0, 7));
+      setLettersExchanging(false);
+
+    } else {
+      alert('Nie ma tylu liter w worku!');
+    }
+  }
+
+  function onExchangeCancel() {
+    setLettersExchanging(false);
+    setToExchange(new Array(7).fill(false, 0, 7));
   }
 
   return (
@@ -401,7 +493,7 @@ function Room(props) {
         <h4>{roomCode.current}</h4>
 
         <Board grid={lettersData.grid} lettersPoints={lettersPoints.current} onFieldClick={onFieldClick} />
-        <MyLetters letters={lettersData.sevenLetters} lettersPoints={lettersPoints.current} onFieldClick={onFieldClick} />
+        <MyLetters letters={lettersData.sevenLetters} lettersPoints={lettersPoints.current} toExchange={toExchange} onFieldClick={onFieldClick} />
         
       </div>
       
@@ -422,15 +514,26 @@ function Room(props) {
           </React.Fragment>
         }
 
-        {isGameOn && myTurn &&
+        {isGameOn && myTurn && !lettersExchanging &&
           <React.Fragment>
             <button onClick={sendLetters}>POTWIERDŹ</button>
             <button onClick={onTurnSkip}>OPUŚĆ KOLEJKĘ</button>
             <button onClick={onLettersExchange}>WYMIEŃ LITERY</button>            
           </React.Fragment>
         } 
-        <div>W worku pozostaje {inBag} liter.</div>
-          
+
+        {isGameOn && myTurn && lettersExchanging && 
+          <React.Fragment>
+            <button onClick={sendLettersToExchange}>WYMIEŃ LITERY</button>
+            <button onClick={onExchangeCancel}>ANULUJ</button>          
+          </React.Fragment>
+        }
+        <div>Pozostało liter w worku: {inBag}</div>
+
+        {blanksData.map((letter, index) => 
+          <BlankSelection key={index+1} idx={index+1} y={letter.y} x={letter.x} dispatch={dispatch} option={ACTIONS.FILL_BLANK}/>
+        )}
+
       </div>
 
     </div>

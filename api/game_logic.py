@@ -1,4 +1,5 @@
 import random
+import os
 
 
 letters = [' ', 'A', 'Ą', 'B', 'C', 'Ć', 'D', 'E', 'Ę', 'F', 'G', 'H', 
@@ -53,11 +54,37 @@ def get_n_letters(n, bag):
     return letters
 
 def init_bag():
-    letters_bag = []
-    for letter, n in letters_count.items():
-        letters_bag += [letter] * n
-    random.shuffle(letters_bag)
-    return letters_bag
+    # letters_bag = []
+    # for letter, n in letters_count.items():
+    #     letters_bag += [letter] * n
+    # random.shuffle(letters_bag)
+    # return letters_bag
+    return [' '] * 5 + ['A'] * 5
+
+
+words_database = {}
+
+def insert(word):
+    letters = word[:2]
+    if letters in words_database.keys():
+        words_database[letters].append(word)
+    else:
+        words_database[letters] = [word]
+
+def exists(word):
+    return word in words_database.get(word[:2], [])
+
+module_dir = os.path.dirname(__file__)
+file_path = os.path.join(module_dir, 'words_database.txt')
+
+with open(file_path, 'r', encoding='utf-8') as f:
+    for line in f.readlines():
+        insert(line.rstrip())
+
+print('database loaded')
+print(exists('siema'))
+
+# counting points and words
 
 tripleWords = [[0,0], [0,7], [0,14], [7,0], [7,14], [14,0], [14,7], [14,14]]
 doubleWords = [[7,7], [1,1], [2,2], [3,3], [4,4], [10,10], [11,11], [12,12], [13,13], [1,13], [2,12], [3,11], [4,10], [13,1], [12,2], [11,3], [10,4]]
@@ -69,132 +96,154 @@ lettersPoints = {
 
 # slowo1 = [{'letter': 'Ć', 'x': 3, 'y': 5},{'letter': 'U', 'x': 5, 'y': 5},{'letter': 'Z', 'x': 6, 'y': 5},{'letter': 'O', 'x': 7, 'y': 5},{'letter': 'N', 'x': 8, 'y': 5}]
 class para:
-    def __init__(self, x, y):
-        self.x = x
+    def __init__(self, y, x):
         self.y = y
+        self.x = x
 
 f = para(4,5)
 l = para(8,5)
 
-    
+# print(lettersPoints.get('Ą'))
+# print(slowo[0].get('letter'))
+# tom_index = next((index for (index, d) in enumerate(slowo) if d['y'] == 5), None)
+# print(slowo[tom_index].get('letter'))
+# print(lettersPoints.get(slowo[tom_index].get('letter')))
+
 def find_every_word_horizontally_and_vertically_and_calculate_points_for_every_founded_word_then_sum_it_all_for_pawel(Grid, word):
-    def find_idx(x_or_y, value):
-        i = next((index for (index, d) in enumerate(word) if d[x_or_y] == value), None)
+    def find_idx(y_or_x, value):
+        i = next((index for (index, d) in enumerate(word) if d[y_or_x] == value), None)
         return i
 
 
 
-    def scan_word(x, y, axis): # axis = "horizontal"/"vertical" - horizontal to poziomo po angielsku xd
-        firstX = x
+    def scan_word(y, x, axis): # axis = "horizontal"/"vertical" - horizontal to poziomo po angielsku yd
         firstY = y
-        lastX = x
+        firstX = x
         lastY = y
+        lastX = x
         if axis == "horizontal":
-            while Grid[firstX][firstY-1] != '' or find_idx("y", firstY-1) != None:
-                firstY = firstY-1
-            while Grid[lastX][lastY+1] != '' or find_idx("y", lastY+1) != None:
-                lastY = lastY+1
+            while Grid[firstY][firstX-1] != '' or find_idx("x", firstX-1) != None:
+                firstX = firstX-1
+            while Grid[lastY][lastX+1] != '' or find_idx("x", lastX+1) != None:
+                lastX = lastX+1
 
         elif axis == "vertical":
-            while Grid[firstX-1][firstY] != '' or find_idx("x", firstX-1) != None:
-                firstX = firstX-1 #dajemy to do funkcji count
-            while Grid[lastX+1][lastY] != '' or find_idx("x", lastX+1) != None:
-                lastX = lastX+1 #dajemy to do funkcji count
-        return firstX, firstY, lastX, lastY
+            while Grid[firstY-1][firstX] != '' or find_idx("y", firstY-1) != None:
+                firstY = firstY-1 #dajemx to do funkcji count
+            while Grid[lastY+1][lastX] != '' or find_idx("y", lastY+1) != None:
+                lastY = lastY+1 #dajemx to do funkcji count
+        return firstY, firstX, lastY, lastX
 
     def count(firstLetter, lastLetter):
         points = 0
         multiplier = 1
         w=''
-        if firstLetter.x == lastLetter.x:
+        if firstLetter.y == lastLetter.y:
             # poziom
-            i = firstLetter.x
-            for j in range (firstLetter.y,lastLetter.y+1):
+            i = firstLetter.y
+            for j in range (firstLetter.x,lastLetter.x+1):
                 if Grid[i][j] != '':
-                    letter = lettersPoints.get(Grid[i][j])
-                    w = w + Grid[i][j]
+                    # print(Grid[i][j])
+
+                    letterPts = lettersPoints.get(Grid[i][j], 0)
+                    if Grid[i][j][0] == 'b':
+                        w += Grid[i][j][1]
+                    else:
+                        w += Grid[i][j]
                 else:
-                    y = next((index for (index, d) in enumerate(word) if d['y'] == j and d['x'] == i), None)
-                    letter = lettersPoints.get(word[y].get('letter'))
-                    w = w + word[y].get('letter')
-                    
-                if [i,j] in tripleLetters:
-                    letter = letter *3
-                elif [i,j] in doubleLetters:
-                    letter = letter *2
-                points += letter  
-                if [i,j] in tripleWords:
-                    multiplier = multiplier * 3
-                elif [i,j] in doubleWords:
-                    multiplier = multiplier * 2  
+                    x = next((index for (index, d) in enumerate(word) if d['x'] == j and d['y'] == i), None)
+                    letterPts = lettersPoints.get(word[x].get('letter'), 0)
+
+                    letter = word[x]['letter']
+                    if letter[0] == 'b':
+                        w += letter[1]
+                    else:
+                        w += letter
+
+                    if [i,j] in tripleLetters:
+                        letterPts = letterPts *3
+                    elif [i,j] in doubleLetters:
+                        letterPts = letterPts *2 
+                    if [i,j] in tripleWords:
+                        multiplier = multiplier * 3
+                    elif [i,j] in doubleWords:
+                        multiplier = multiplier * 2  
+                points += letterPts 
         else:
             #pion E4 hehe
-            j = firstLetter.y
-            for i in range (firstLetter.x,lastLetter.x+1):
+            j = firstLetter.x
+            for i in range (firstLetter.y,lastLetter.y+1):
                 if Grid[i][j] != '':
-                    letter = lettersPoints.get(Grid[i][j])
-                    w = w + Grid[i][j]
+                    letterPts = lettersPoints.get(Grid[i][j], 0)
+                    
+                    if Grid[i][j][0] == 'b':
+                        w += Grid[i][j][1]
+                    else:
+                        w += Grid[i][j]
                 else:
-                    x = next((index for (index, d) in enumerate(word) if d['x'] == i and d['y'] == j), None)
-                    letter = lettersPoints.get(word[x].get('letter'))
-                    w = w + word[x].get('letter')
-                if [i,j] in tripleLetters:
-                    letter = letter *3
-                elif [i,j] in doubleLetters:
-                    letter = letter *2
-                points += letter  
-                if [i,j] in tripleWords:
-                    multiplier = multiplier * 3
-                elif [i,j] in doubleWords:
-                    multiplier = multiplier * 2 
+                    y = next((index for (index, d) in enumerate(word) if d['y'] == i and d['x'] == j), None)
+                    letterPts = lettersPoints.get(word[y].get('letter'), 0)
+                    
+                    letter = word[y]['letter']
+                    if letter[0] == 'b':
+                        w += letter[1]
+                    else:
+                        w += letter
+
+                    if [i,j] in tripleLetters:
+                        letterPts = letterPts *3
+                    elif [i,j] in doubleLetters:
+                        letterPts = letterPts *2
+                    if [i,j] in tripleWords:
+                        multiplier = multiplier * 3
+                    elif [i,j] in doubleWords:
+                        multiplier = multiplier * 2 
+                points += letterPts  
         points = points * multiplier
-        return points, w
+        return points, w.lower()
     sum_of_points = 0
     list_of_words = []
-    # for i in word:
-    #     tmp = i.get('x')
-    #     i['x'] = i.get('y')
-    #     i['y'] = tmp
+
     if len(word) == 1:
-        f.x,f.y,l.x,l.y = scan_word(word[0].get('x'),word[0].get('y'),'horizontal')
-        if f.y !=l.y:       
+        f.y,f.x,l.y,l.x = scan_word(word[0].get('y'),word[0].get('x'),'horizontal')
+        if f.x !=l.x:       
             p,s = count(f,l)
             sum_of_points += p
             list_of_words.append(s)
-        f.x,f.y,l.x,l.y = scan_word(word[0].get('x'),word[0].get('y'),'vertical')
-        if f.x !=l.x:
+        f.y,f.x,l.y,l.x = scan_word(word[0].get('y'),word[0].get('x'),'vertical')
+        if f.y !=l.y:
             p,s = count(f,l)
             sum_of_points += p
             list_of_words.append(s)
         print('suma punktów dla pojedynczej dołożonej litery:',sum_of_points)
     else:
-        if word[0].get('x') == word[1].get('x'): #slowo w poziomie -- info dla Krzyśka bo mu się mylą wymiary xD
-            f.x,f.y,l.x,l.y = scan_word(word[0].get('x'),word[0].get('y'),'horizontal')
+        if word[0].get('y') == word[1].get('y'): #slowo w poziomie -- info dla Krzyśka bo mu się mylą wymiary xD
+            f.y,f.x,l.y,l.x = scan_word(word[0].get('y'),word[0].get('x'),'horizontal')
             p,s = count(f,l)
             sum_of_points += p
             list_of_words.append(s)
             for i in word:
-                f.x,f.y,l.x,l.y = scan_word(i.get('x'),i.get('y'),'vertical')
-                if f.x !=l.x:
+                f.y,f.x,l.y,l.x = scan_word(i.get('y'),i.get('x'),'vertical')
+                if f.y !=l.y:
                     p,s = count(f,l)
                     sum_of_points += p
                     list_of_words.append(s)
             print('suma punktów dla słowa w poziomie:',sum_of_points)
         else:
-            f.x,f.y,l.x,l.y = scan_word(word[0].get('x'),word[0].get('y'),'vertical')
+            f.y,f.x,l.y,l.x = scan_word(word[0].get('y'),word[0].get('x'),'vertical')
             p,s = count(f,l)
             sum_of_points += p
             list_of_words.append(s)
             for i in word:
-                f.x,f.y,l.x,l.y = scan_word(i.get('x'),i.get('y'),'horizontal')
-                if f.y !=l.y:
+                f.y,f.x,l.y,l.x = scan_word(i.get('y'),i.get('x'),'horizontal')
+                if f.x !=l.x:
                     p,s = count(f,l)
                     sum_of_points += p
                     list_of_words.append(s)
             print('suma punktów dla słowa w pionie:',sum_of_points)
     print(list_of_words)
-    return sum_of_points
+    return sum_of_points, list_of_words
     
-# find_every_word_horizontally_and_vertically_and_calculate_points_for_every_founded_word_then_sum_it_all_for_pawel(Grid1,slowo1)   
+#s = find_every_word_horizontally_and_vertically_and_calculate_points_for_every_founded_word_then_sum_it_all_for_pawel(Grid1,slowo1)   
 #asd = count(f,l)
 #print(asd)

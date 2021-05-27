@@ -1,6 +1,6 @@
-import React from 'react'
+import React, {useState} from 'react'
 
-export default function Square({ letter, confirmed, className, y, x, onBoard, lettersPoints, onFieldClick }) {
+export default function Square({ letter, confirmed, toExchange, className, y, x, onBoard, lettersPoints, onFieldClick }) {
 
   // classnames: empty, filled, triple-word, triple-letter, double-word, double-letter
   var innerText = '';
@@ -14,10 +14,10 @@ export default function Square({ letter, confirmed, className, y, x, onBoard, le
   }
 
   return (
-    <div className={'square ' + (letter ? (confirmed ? 'filled' : 'filled-unconfirmed') : className)} data-y={y} data-x={x} data-board={onBoard} onClick={onFieldClick}>
+    <div className={'square ' + (letter ? (confirmed ? 'filled ' : 'filled-unconfirmed ') : className) + (toExchange ? 'selected-to-exchange' : '')} data-y={y} data-x={x} data-board={onBoard} onClick={onFieldClick}>
       {innerText}
-      {letter && <div className='letter'>{letter}</div>}
-      {letter && <div className='points'>{lettersPoints[letter]}</div>}
+      {letter && <div className='letter'>{letter[0] == 'b' ? letter[1] : letter}</div>}
+      {letter && letter != ' ' && <div className='points'>{lettersPoints[letter]}</div>}
     </div>
   )
   
