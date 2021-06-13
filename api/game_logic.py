@@ -43,24 +43,21 @@ letters_count = {
 
 def get_n_letters(n, bag):
   if len(bag) >= n:
-    print('spoko, daje tyle ile chcesz')
     letters = bag[-n:]
     del bag[-n:]
     return letters
   else:
-    print('masz tu jakies ściepy')
     letters = bag.copy()
     del bag[0:]
     return letters
 
 def init_bag():
-    # letters_bag = []
-    # for letter, n in letters_count.items():
-    #     letters_bag += [letter] * n
-    # random.shuffle(letters_bag)
-    # return letters_bag
-    return [' '] * 5 + ['A'] * 5
-
+    letters_bag = []
+    for letter, n in letters_count.items():
+        letters_bag += [letter] * n
+    random.shuffle(letters_bag)
+    return letters_bag
+    # return [' '] * 5 + ['A'] * 5
 
 words_database = {}
 
@@ -71,7 +68,7 @@ def insert(word):
     else:
         words_database[letters] = [word]
 
-def exists(word):
+def legal_word(word):
     return word in words_database.get(word[:2], [])
 
 module_dir = os.path.dirname(__file__)
@@ -81,8 +78,8 @@ with open(file_path, 'r', encoding='utf-8') as f:
     for line in f.readlines():
         insert(line.rstrip())
 
-print('database loaded')
-print(exists('siema'))
+print('Words database loaded.')
+
 
 # counting points and words
 
@@ -94,7 +91,6 @@ lettersPoints = {
     'A': 1, 'Ą': 5,'B': 3, 'C': 2, 'Ć': 6, 'D': 2, 'E': 1, 'Ę': 5, 'F': 5,'G': 3,'H': 3, 'I': 1, 'J': 3, 'K': 2, 'L': 2, 'Ł': 3, 'M': 2, 'N': 1, 'Ń': 7, 'O': 1, 'Ó': 5,
  'P': 2, 'R': 1, 'S': 1, 'Ś': 5, 'T': 2, 'U': 3, 'W': 1, 'Y': 2, 'Z': 1, 'Ź': 9, 'Ż': 5, ' ': 0}
 
-# slowo1 = [{'letter': 'Ć', 'x': 3, 'y': 5},{'letter': 'U', 'x': 5, 'y': 5},{'letter': 'Z', 'x': 6, 'y': 5},{'letter': 'O', 'x': 7, 'y': 5},{'letter': 'N', 'x': 8, 'y': 5}]
 class para:
     def __init__(self, y, x):
         self.y = y
@@ -103,18 +99,10 @@ class para:
 f = para(4,5)
 l = para(8,5)
 
-# print(lettersPoints.get('Ą'))
-# print(slowo[0].get('letter'))
-# tom_index = next((index for (index, d) in enumerate(slowo) if d['y'] == 5), None)
-# print(slowo[tom_index].get('letter'))
-# print(lettersPoints.get(slowo[tom_index].get('letter')))
-
-def find_every_word_horizontally_and_vertically_and_calculate_points_for_every_founded_word_then_sum_it_all_for_pawel(Grid, word):
+def calculate_points(Grid, word):
     def find_idx(y_or_x, value):
         i = next((index for (index, d) in enumerate(word) if d[y_or_x] == value), None)
         return i
-
-
 
     def scan_word(y, x, axis): # axis = "horizontal"/"vertical" - horizontal to poziomo po angielsku yd
         firstY = y
@@ -215,7 +203,7 @@ def find_every_word_horizontally_and_vertically_and_calculate_points_for_every_f
             p,s = count(f,l)
             sum_of_points += p
             list_of_words.append(s)
-        print('suma punktów dla pojedynczej dołożonej litery:',sum_of_points)
+        # print('suma punktów dla pojedynczej dołożonej litery:',sum_of_points)
     else:
         if word[0].get('y') == word[1].get('y'): #slowo w poziomie -- info dla Krzyśka bo mu się mylą wymiary xD
             f.y,f.x,l.y,l.x = scan_word(word[0].get('y'),word[0].get('x'),'horizontal')
@@ -228,7 +216,7 @@ def find_every_word_horizontally_and_vertically_and_calculate_points_for_every_f
                     p,s = count(f,l)
                     sum_of_points += p
                     list_of_words.append(s)
-            print('suma punktów dla słowa w poziomie:',sum_of_points)
+            # print('suma punktów dla słowa w poziomie:',sum_of_points)
         else:
             f.y,f.x,l.y,l.x = scan_word(word[0].get('y'),word[0].get('x'),'vertical')
             p,s = count(f,l)
@@ -240,10 +228,6 @@ def find_every_word_horizontally_and_vertically_and_calculate_points_for_every_f
                     p,s = count(f,l)
                     sum_of_points += p
                     list_of_words.append(s)
-            print('suma punktów dla słowa w pionie:',sum_of_points)
-    print(list_of_words)
+            # print('suma punktów dla słowa w pionie:',sum_of_points)
+    # print(list_of_words)
     return sum_of_points, list_of_words
-    
-#s = find_every_word_horizontally_and_vertically_and_calculate_points_for_every_founded_word_then_sum_it_all_for_pawel(Grid1,slowo1)   
-#asd = count(f,l)
-#print(asd)

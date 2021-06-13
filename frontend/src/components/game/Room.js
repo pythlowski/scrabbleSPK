@@ -7,12 +7,16 @@ import BlankSelection from './BlankSelection.js';
 
 const ACTIONS = {
   INIT: 0,
-  UPDATE_GRID: 1,
+  INIT_ON_CONNECT: 10,
+  UPDATE_GRID_FROM_LETTERS: 1,
   UPDATE_HAND: 2,
   SWAP_HAND_HAND: 3,
   SWAP_HAND_BOARD: 4,
   SWAP_BOARD_BOARD: 5,
   FILL_BLANK: 6,
+  REVERT_HAND: 8,
+  REVERT_BOARD: 9,
+  
 }
 
 function reducer(lettersData, action){
@@ -53,7 +57,7 @@ function reducer(lettersData, action){
       }
       return lettersData
 
-    case ACTIONS.UPDATE_GRID:
+    case ACTIONS.UPDATE_GRID_FROM_LETTERS:
       console.log('Got new letters, updating confirmed on grid!')
       var newGrid = lettersData.grid;
       action.newLetters.forEach(letterObject => {
@@ -78,10 +82,42 @@ function reducer(lettersData, action){
       newGrid[action.y][action.x].letter = `b${action.letter}`;
       console.log(newGrid[action.y][action.x])
       return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
+      
+    case ACTIONS.REVERT_HAND:
+      console.log('revert hand')
+      console.log(action.newSevenLetters)
+      console.log(lettersData)
+      // return lettersData;
+
+      return {grid: lettersData.grid, sevenLetters: sevenDataFromArray(action.newSevenLetters)}
+
+    case ACTIONS.REVERT_BOARD:
+      console.log('revert board')
+      var newGrid = lettersData.grid;
+
+      action.lettersToRevert.forEach(letterObject => {
+        newGrid[letterObject.y][letterObject.x].letter = '';
+        newGrid[letterObject.y][letterObject.x].confirmed = false;
+      })
+      return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
+
+    case ACTIONS.INIT_ON_CONNECT:
+      console.log('init on connect')
+      var newGrid = lettersData.grid;
+
+      action.grid.forEach((row, i) => {
+        row.forEach((letter, j) =>
+        { if (letter) {
+          newGrid[i][j].letter = letter;
+          newGrid[i][j].confirmed = true;
+          }
+        })
+      })
+      return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
 
     default:
       return lettersData;
-  }
+    }
 }
 
 function gridDataFromArray2D(array2D){
@@ -100,7 +136,7 @@ function gridDataFromArray2D(array2D){
 
 }
 
-function sevenDataFromArray2D(array){
+function sevenDataFromArray(array){
   var sevenLetters = new Array(7);
 
   for (let i = 0; i < 7; i++){
@@ -115,10 +151,12 @@ function Room(props) {
   const [players, setPlayers] = useState([]);
   const [blanksData, setBlanks] = useState([]);
   const [isHost, setHost] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [myTurn, setMyTurn] = useState(false);
   const [isGameOn, setGameOn] = useState(false);
   const [fillingBlanks, setFillingBlanks] = useState(false);
   const [lettersExchanging, setLettersExchanging] = useState(false);
+  const [canQuestion, setCanQuestion] = useState(false);
   const [inBag, setInBag] = useState(0);
   const [toExchange, setToExchange] = useState(new Array(7).fill(false, 0, 7));
   
@@ -149,7 +187,7 @@ function Room(props) {
     let sevenFromDB = new Array(7);
 
     var startGrid = gridDataFromArray2D(gridFromDB);
-    var startSevenLetters = sevenDataFromArray2D(sevenFromDB);
+    var startSevenLetters = sevenDataFromArray(sevenFromDB);
 
     var tripleWords = [[0,0], [0,7], [0,14], [7,0], [7,14], [14,0], [14,7], [14,14]];
     var doubleWords = [[7,7], [1,1], [2,2], [3,3], [4,4], [10,10], [11,11], [12,12], [13,13], [1,13], [2,12], [3,11], [4,10], [13,1], [12,2], [11,3], [10,4]];
@@ -194,18 +232,24 @@ function Room(props) {
         console.log('setting username');
         console.log(data['yourUsername']);
         myUsername.current = data['yourUsername'];
+
+        let isPlaying = players.filter(player => player.username == myUsername.current).length;
+        setIsPlaying(isPlaying ? true : false);
+        setGameOn(data['started']);
+
+        dispatch({type: ACTIONS.INIT_ON_CONNECT, grid: data['grid']});
+
       }
       else if (message == 'letters') {
         console.log('nowe literki, zara robie dispatch');
         console.log(data['letters'])
-        dispatch({type: ACTIONS.UPDATE_GRID, newLetters: data['letters']});
+        dispatch({type: ACTIONS.UPDATE_GRID_FROM_LETTERS, newLetters: data['letters']});
 
         setPlayers(players => players.map(player => 
           player.username === data['username'] 
           ? {...player, points : player.points + data['points']} 
           : player ));
-          let inBagLeft = inBag - data['letters'].length;
-        setInBag(inBagLeft >= 0 ? inBagLeft : 0);
+        setInBag(inBag => inBag - data['letters'].length > 0 ? inBag - data['letters'].length : 0);
       }
       else if (message == 'new_player') {
         console.log('!!!!!!! dopisuje nowego gracza do listy', data['username']);
@@ -219,8 +263,11 @@ function Room(props) {
       }
       else if (message == 'turn_change') {
         console.log('new_turn for player');
-        console.log(data['username']);
-        console.log(myUsername.current);
+        console.log(myTurn)
+        if (!myTurn) {
+          setCanQuestion(true);
+        }
+
         if (data['username'] == myUsername.current) {
           setMyTurn(true);
           console.log('MY TURN!');
@@ -244,6 +291,29 @@ function Room(props) {
       else if (message == 'game_over') {
         console.log("game over")
         alert(`Koniec gry! Wygrywa: ${data['winners']} z ${data['points']} pkt!`)
+      }
+
+      else if (message == 'turn_question_response') {
+        if (data['incorrect_words'].length > 0) {
+          alert(`Wykryto niepoprawne słowa: ${data['incorrect_words']}`);
+
+          dispatch({type: ACTIONS.REVERT_BOARD, lettersToRevert: data['letters_to_revert']});
+          setCanQuestion(false);
+
+          setPlayers(players => players.map(player => 
+          player.username === data['username'] 
+          ? {...player, points : player.points - data['points_to_revert']} 
+          : player ));
+
+        } else {
+          alert('Poprawny ruch.');
+        }
+      }
+
+      else if (message == 'revert_details') {
+        console.log('Dostaje revert details')
+        dispatch({type: ACTIONS.REVERT_HAND, newSevenLetters: data['new_seven_letters']});
+        
       }
       
     }
@@ -429,7 +499,7 @@ function Room(props) {
           }));
           setFillingBlanks(false);
           setBlanks([]);
-          setMyTurn(false);
+          // setMyTurn(false);
         }
     } else {
       alert('Nielegalne ustawienie liter!');
@@ -486,6 +556,12 @@ function Room(props) {
     setToExchange(new Array(7).fill(false, 0, 7));
   }
 
+  function questionPreviousLetters() {
+    socketRef.current.send(JSON.stringify({
+        'message': 'question_turn'
+      }));
+  }
+
   return (
     <div id='room'>
       <div className='a1'>
@@ -530,6 +606,14 @@ function Room(props) {
         }
         <div>Pozostało liter w worku: {inBag}</div>
 
+        {isGameOn && isPlaying &&
+          <button onClick={questionPreviousLetters} disabled={!canQuestion}>ZAKWESTIONUJ UŁOŻONE SŁOWA</button>
+        }
+
+        {!isPlaying &&
+          <div>Jesteś obserwatorem gry.</div>
+        }
+        
         {blanksData.map((letter, index) => 
           <BlankSelection key={index+1} idx={index+1} y={letter.y} x={letter.x} dispatch={dispatch} option={ACTIONS.FILL_BLANK}/>
         )}

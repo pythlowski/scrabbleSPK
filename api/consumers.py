@@ -3,6 +3,7 @@ from asgiref.sync import async_to_sync
 from .game_logic import *
 import json
 import random
+import time
 
 
 memory = {}
@@ -36,12 +37,14 @@ class WSConsumer(WebsocketConsumer):
                 'bag': init_bag(),
                 'players': [],
                 'current_turn': 0,
-                'skipped_in_row': 0
+                'skipped_in_row': 0,
+                'last_turn': {}
             }
             print('Left in bag:', len(memory[self.room_code]['bag']))
 
         self.send(text_data=json.dumps({
                 'message': 'init',
+                'started': memory[self.room_code]['started'],
                 'grid': memory[self.room_code]['grid'],
                 'players': [{'username': player['username'], 'points': player['points'], 'theirTurn': player['theirTurn'], 'isHost': player['isHost']} for player in memory[self.room_code]['players']],
                 'isHost': is_host,
@@ -49,44 +52,45 @@ class WSConsumer(WebsocketConsumer):
                 'inBag': len(memory[self.room_code]['bag'])
             }))
 
-        memory[self.room_code]['players'].append({
-            'username': self.username,
-            'seven_letters': [''] * 7,
-            'points': 0,
-            'theirTurn': False,
-            'isHost': is_host
-        })
-
-        async_to_sync(self.channel_layer.group_send)(
-            self.group_name,
-            {
-                'type': 'new.player.message',
-                'message': 'new_player',
+        usernames = [player['username'] for player in memory[self.room_code]['players']]
+        
+        print(f'{self.username} trying to connect to the game...s')
+        if self.username not in usernames and not memory[self.room_code]['started']:
+            memory[self.room_code]['players'].append({
                 'username': self.username,
+                'seven_letters': [''] * 7,
+                'points': 0,
+                'theirTurn': False,
                 'isHost': is_host
-            }
-        )
+            })
+
+            async_to_sync(self.channel_layer.group_send)(
+                self.group_name,
+                {
+                    'type': 'new.player.message',
+                    'message': 'new_player',
+                    'username': self.username,
+                    'isHost': is_host
+                }
+            )
+        print([player['username'] for player in memory[self.room_code]['players']])
 
 
     def receive(self, text_data=None, bytes_bata=None):
         data = json.loads(text_data)
         if data['message'] == 'letters':
-
+            
             memory[self.room_code]['skipped_in_row'] = 0
 
             self.send(text_data=json.dumps({
                 'response': 'dzieki za litery'
             }))
 
-            # print(data['letters'])
-
-            points, words = find_every_word_horizontally_and_vertically_and_calculate_points_for_every_founded_word_then_sum_it_all_for_pawel(
-                memory[self.room_code]['grid'], data['letters']
-            )
+            points, words = calculate_points(memory[self.room_code]['grid'], data['letters'])
             
-            print(points)
-            for word in words:
-                print(word, exists(word))
+            print(points, words)
+            # for word in words:
+            #     print(word, legal_word(word))
 
             for letter in data['letters']:
                 memory[self.room_code]['grid'][letter['y']][letter['x']] = letter['letter']
@@ -94,7 +98,6 @@ class WSConsumer(WebsocketConsumer):
             for player in memory[self.room_code]['players']:
                 if player['username'] == self.username:
                    player['points'] += points
-            
 
             async_to_sync(self.channel_layer.group_send)(
                     self.group_name,
@@ -108,11 +111,21 @@ class WSConsumer(WebsocketConsumer):
                 )
 
             from_bag = get_n_letters(len(data['letters']), memory[self.room_code]['bag'])
+            player = list(filter(lambda x: x['username'] == self.username, memory[self.room_code]['players']))[0]
+
+            memory[self.room_code]['last_turn']['letters'] = data['letters']  
+            memory[self.room_code]['last_turn']['words'] = words 
+            memory[self.room_code]['last_turn']['player'] = {
+                'username': self.username,
+                'seven_letters': player['seven_letters'].copy(),
+                'from_bag': from_bag.copy(),
+                'points': points
+            } 
+
             self.send_letters_from_bag(self.username, from_bag)
 
             added_letters = [x['letter'] if x['letter'][0] != 'b' else ' ' for x in data['letters']]
-            player = list(filter(lambda x: x['username'] == self.username, memory[self.room_code]['players']))[0]
-
+            
             for i in range(7):
                 if player['seven_letters'][i] in added_letters:
                     added_letters.remove(player['seven_letters'][i])
@@ -120,8 +133,6 @@ class WSConsumer(WebsocketConsumer):
                         player['seven_letters'][i] = from_bag.pop(0) 
                     else:
                         player['seven_letters'][i] = ''
-
-            print(memory[self.room_code]['players'])
 
             if not list(filter(lambda x: x != '', player['seven_letters'])):
                 print('Game over')
@@ -165,6 +176,8 @@ class WSConsumer(WebsocketConsumer):
             print(memory[self.room_code]['skipped_in_row'])
             if memory[self.room_code]['skipped_in_row'] == 2 * len(memory[self.room_code]['players']):
                 self.game_over()
+
+            memory[self.room_code]['last_turn'] = {}   
             self.switch_turn()
 
         elif data['message'] == 'letters_exchange':
@@ -192,9 +205,49 @@ class WSConsumer(WebsocketConsumer):
                         else:
                             player['seven_letters'][i] = ''
                             
-
             self.switch_turn()
+        
+        elif data['message'] == 'question_turn':
+            if memory[self.room_code]['last_turn']:
+                username = memory[self.room_code]['last_turn']['player']['username']
+                words_checked = [(word, legal_word(word)) for word in memory[self.room_code]['last_turn']['words']]
+                incorrect_words = [word for (word, is_legal) in words_checked if not is_legal]
 
+                async_to_sync(self.channel_layer.group_send)(
+                        self.group_name,
+                        {
+                            'type': 'turn.question.response',
+                            'message': 'turn_question_response',
+                            'incorrect_words': incorrect_words,
+                            'username': username,
+                            'letters_to_revert': memory[self.room_code]['last_turn']['letters'],
+                            'points_to_revert': memory[self.room_code]['last_turn']['player']['points']
+                        }
+                    )
+                if incorrect_words:
+                    print('Reverting player\'s data')
+                    
+                    player = list(filter(lambda x: x['username'] == username, memory[self.room_code]['players']))[0]
+
+                    player['seven_letters'] = memory[self.room_code]['last_turn']['player']['seven_letters']
+                    player['points'] -= memory[self.room_code]['last_turn']['player']['points']
+
+                    for letter in memory[self.room_code]['last_turn']['letters']:
+                        memory[self.room_code]['grid'][letter['y']][letter['x']] = ''
+                    memory[self.room_code]['bag'] += memory[self.room_code]['last_turn']['player']['from_bag']
+
+                    # send reverted data to this player
+                    group_name = f'group_{self.room_code}_{username}'
+                    async_to_sync(self.channel_layer.group_send)(
+                        group_name,
+                        {
+                            'type': 'revert.details.message',
+                            'message': 'revert_details',
+                            'new_seven_letters': player['seven_letters']
+                        }
+                    )
+
+                    memory[self.room_code]['last_turn'] = {}
 
     def new_player_message(self, event):
 
@@ -232,6 +285,21 @@ class WSConsumer(WebsocketConsumer):
             'message': event['message'],
             'winners': event['winners'],
             'points': event['points'],
+        }))
+
+    def turn_question_response(self, event):
+        self.send(text_data=json.dumps({
+            'message': event['message'],
+            'incorrect_words': event['incorrect_words'],
+            'username': event['username'],
+            'letters_to_revert': event['letters_to_revert'],
+            'points_to_revert': event['points_to_revert']
+        }))
+
+    def revert_details_message(self, event):
+        self.send(text_data=json.dumps({
+            'message': event['message'],
+            'new_seven_letters': event['new_seven_letters']
         }))
 
     def send_letters_from_bag(self, username, letters):
