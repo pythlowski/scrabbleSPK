@@ -230,4 +230,6 @@ def calculate_points(Grid, word):
                     list_of_words.append(s)
             # print('suma punktów dla słowa w pionie:',sum_of_points)
     # print(list_of_words)
+    if len(word) == 7:
+        sum_of_points += 50
     return sum_of_points, list_of_words
