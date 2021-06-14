@@ -100,6 +100,9 @@ const F64_SIZE = 8;
 const MEASURE_START_OPERATION = Symbol("MEASURE_START_OPERATION");
 const MEASURE_END_OPERATION = Symbol("MEASURE_END_OPERATION");
 
+/** @typedef {typeof MEASURE_START_OPERATION} MEASURE_START_OPERATION_TYPE */
+/** @typedef {typeof MEASURE_END_OPERATION} MEASURE_END_OPERATION_TYPE */
+
 const identifyNumber = n => {
 	if (n === (n | 0)) {
 		if (n <= 127 && n >= -128) return 0;
@@ -123,6 +126,12 @@ class BinaryMiddleware extends SerializerMiddleware {
 		return this._serialize(data, context);
 	}
 
+	_serializeLazy(fn, context) {
+		return SerializerMiddleware.serializeLazy(fn, data =>
+			this._serialize(data, context)
+		);
+	}
+
 	/**
 	 * @param {DeserializedType} data data
 	 * @param {Object} context context object
@@ -135,7 +144,7 @@ class BinaryMiddleware extends SerializerMiddleware {
 		let leftOverBuffer = null;
 		let currentPosition = 0;
 		/** @type {BufferSerializableType[]} */
-		const buffers = [];
+		let buffers = [];
 		let buffersTotalLength = 0;
 		const allocate = bytesNeeded => {
 			if (currentBuffer !== null) {
@@ -146,8 +155,11 @@ class BinaryMiddleware extends SerializerMiddleware {
 				currentBuffer = leftOverBuffer;
 				leftOverBuffer = null;
 			} else {
-				currentBuffer = Buffer.allocUnsafeSlow(
-					Math.max(bytesNeeded, buffersTotalLength, 16384)
+				currentBuffer = Buffer.allocUnsafe(
+					Math.max(
+						bytesNeeded,
+						Math.min(Math.max(buffersTotalLength, 1024), 16384)
+					)
 				);
 			}
 		};
@@ -192,19 +204,15 @@ class BinaryMiddleware extends SerializerMiddleware {
 						if (!SerializerMiddleware.isLazy(thing))
 							throw new Error("Unexpected function " + thing);
 						/** @type {SerializedType | (() => SerializedType)} */
-						let serializedData = SerializerMiddleware.getLazySerializedValue(
-							thing
-						);
+						let serializedData =
+							SerializerMiddleware.getLazySerializedValue(thing);
 						if (serializedData === undefined) {
 							if (SerializerMiddleware.isLazy(thing, this)) {
 								const data = this._serialize(thing(), context);
 								SerializerMiddleware.setLazySerializedValue(thing, data);
 								serializedData = data;
 							} else {
-								serializedData = SerializerMiddleware.serializeLazy(
-									thing,
-									data => this._serialize(data, context)
-								);
+								serializedData = this._serializeLazy(thing, context);
 							}
 						}
 						if (typeof serializedData === "function") {
@@ -471,7 +479,13 @@ class BinaryMiddleware extends SerializerMiddleware {
 		};
 		serializeData(data);
 		flush();
-		return buffers;
+
+		// avoid leaking memory
+		currentBuffer = null;
+		leftOverBuffer = null;
+		const _buffers = buffers;
+		buffers = undefined;
+		return _buffers;
 	}
 
 	/**
@@ -481,6 +495,21 @@ class BinaryMiddleware extends SerializerMiddleware {
 	 */
 	deserialize(data, context) {
 		return this._deserialize(data, context);
+	}
+
+	_createLazyDeserialized(content, context) {
+		return SerializerMiddleware.createLazy(
+			memoize(() => this._deserialize(content, context)),
+			this,
+			undefined,
+			content
+		);
+	}
+
+	_deserializeLazy(fn, context) {
+		return SerializerMiddleware.deserializeLazy(fn, data =>
+			this._deserialize(data, context)
+		);
 	}
 
 	/**
@@ -493,6 +522,8 @@ class BinaryMiddleware extends SerializerMiddleware {
 		let currentBuffer = data[0];
 		let currentIsBuffer = Buffer.isBuffer(currentBuffer);
 		let currentPosition = 0;
+
+		const retainedBuffer = context.retainedBuffer || (x => x);
 
 		const checkOverflow = () => {
 			if (currentPosition >= currentBuffer.length) {
@@ -607,23 +638,16 @@ class BinaryMiddleware extends SerializerMiddleware {
 								do {
 									const buf = readUpTo(l);
 									l -= buf.length;
-									content.push(buf);
+									content.push(retainedBuffer(buf));
 								} while (l > 0);
 							}
 						}
-						result.push(
-							SerializerMiddleware.createLazy(
-								memoize(() => this._deserialize(content, context)),
-								this,
-								undefined,
-								content
-							)
-						);
+						result.push(this._createLazyDeserialized(content, context));
 					};
 				case BUFFER_HEADER:
 					return () => {
 						const len = readU32();
-						result.push(read(len));
+						result.push(retainedBuffer(read(len)));
 					};
 				case TRUE_HEADER:
 					return () => result.push(true);
@@ -849,14 +873,10 @@ class BinaryMiddleware extends SerializerMiddleware {
 		});
 
 		/** @type {DeserializedType} */
-		const result = [];
+		let result = [];
 		while (currentBuffer !== null) {
 			if (typeof currentBuffer === "function") {
-				result.push(
-					SerializerMiddleware.deserializeLazy(currentBuffer, data =>
-						this._deserialize(data, context)
-					)
-				);
+				result.push(this._deserializeLazy(currentBuffer, context));
 				currentDataItem++;
 				currentBuffer =
 					currentDataItem < data.length ? data[currentDataItem] : null;
@@ -866,7 +886,11 @@ class BinaryMiddleware extends SerializerMiddleware {
 				dispatchTable[header]();
 			}
 		}
-		return result;
+
+		// avoid leaking memory in context
+		let _result = result;
+		result = undefined;
+		return _result;
 	}
 }
 

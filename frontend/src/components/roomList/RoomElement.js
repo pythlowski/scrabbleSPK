@@ -23,7 +23,7 @@ function RoomElement(props) {
         </TableCell>
         <TableCell align="right">{code}</TableCell>
         <TableCell align="right">Pokój użytkownika {host_name}</TableCell>
-        <TableCell align="right">{current_players}/{max_players}</TableCell>
+        <TableCell align="right">{max_players}</TableCell>
       </TableRow>
   );
 }

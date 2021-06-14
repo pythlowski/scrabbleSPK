@@ -80,19 +80,12 @@ function reducer(lettersData, action){
     case ACTIONS.FILL_BLANK:
       var newGrid = lettersData.grid;
       newGrid[action.y][action.x].letter = `b${action.letter}`;
-      console.log(newGrid[action.y][action.x])
       return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
       
     case ACTIONS.REVERT_HAND:
-      console.log('revert hand')
-      console.log(action.newSevenLetters)
-      console.log(lettersData)
-      // return lettersData;
-
       return {grid: lettersData.grid, sevenLetters: sevenDataFromArray(action.newSevenLetters)}
 
     case ACTIONS.REVERT_BOARD:
-      console.log('revert board')
       var newGrid = lettersData.grid;
 
       action.lettersToRevert.forEach(letterObject => {
@@ -113,7 +106,7 @@ function reducer(lettersData, action){
           }
         })
       })
-      return {grid: newGrid, sevenLetters: lettersData.sevenLetters}
+      return {grid: newGrid, sevenLetters: sevenDataFromArray(action.sevenLetters)}
 
     default:
       return lettersData;
@@ -153,7 +146,10 @@ function Room(props) {
   const [isHost, setHost] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [myTurn, setMyTurn] = useState(false);
+  const myTurnRef = useRef();
+  myTurnRef.current = myTurn;
   const [isGameOn, setGameOn] = useState(false);
+  const [isGameOver, setGameOver] = useState(false);
   const [fillingBlanks, setFillingBlanks] = useState(false);
   const [lettersExchanging, setLettersExchanging] = useState(false);
   const [canQuestion, setCanQuestion] = useState(false);
@@ -177,8 +173,6 @@ function Room(props) {
     }
   )
   
-  // console.log(toExchange);
-  // console.log(lettersData.grid)
   useEffect(() => {
     // let startGrid = Array.from(Array(15), _ => Array(15).fill({letter: '', wordBonus: 1, letterBonus: 1, confirmed: false }));
     // let startGrid = new Array(15).fill(null).map(()=>new Array(15).fill({letter: '', wordBonus: 1, letterBonus: 1, confirmed: false }));
@@ -232,17 +226,26 @@ function Room(props) {
         console.log('setting username');
         console.log(data['yourUsername']);
         myUsername.current = data['yourUsername'];
-
-        let isPlaying = players.filter(player => player.username == myUsername.current).length;
+        
+        console.log('Trying to figure out if player is in the game...')
+        let isPlaying = Array.from(data['players']).filter(player => player.username == myUsername.current).length;
+        console.log(isPlaying);
         setIsPlaying(isPlaying ? true : false);
+        if (!isPlaying) {
+          alert('Gra już wystartowała lub przekroczono limit graczy.');
+        }
         setGameOn(data['started']);
 
-        dispatch({type: ACTIONS.INIT_ON_CONNECT, grid: data['grid']});
+        if (data['currentTurn'] == myUsername.current) {
+          setMyTurn(true);
+        } else {
+          setMyTurn(false);
+        }
+
+        dispatch({type: ACTIONS.INIT_ON_CONNECT, grid: data['grid'], sevenLetters: data['sevenLetters']});
 
       }
       else if (message == 'letters') {
-        console.log('nowe literki, zara robie dispatch');
-        console.log(data['letters'])
         dispatch({type: ACTIONS.UPDATE_GRID_FROM_LETTERS, newLetters: data['letters']});
 
         setPlayers(players => players.map(player => 
@@ -252,22 +255,23 @@ function Room(props) {
         setInBag(inBag => inBag - data['letters'].length > 0 ? inBag - data['letters'].length : 0);
       }
       else if (message == 'new_player') {
-        console.log('!!!!!!! dopisuje nowego gracza do listy', data['username']);
-        setPlayers(players => [...players, {username: data['username'], points: 0, theirTurn: false, isHost: data['isHost']}])
-        playersCount.current += 1;
+        if (data['username'] != myUsername.current) {
+          setPlayers(players => [...players, {username: data['username'], points: 0, theirTurn: false, isHost: data['isHost']}])
+          playersCount.current += 1;
+        }
       }
       else if (message == 'game_start') {
         console.log('game started');
         setGameOn(true);
         setInBag(inBag => inBag - playersCount.current*7);
+        // setCanQuestion(false);
       }
       else if (message == 'turn_change') {
-        console.log('new_turn for player');
-        console.log(myTurn)
-        if (!myTurn) {
-          setCanQuestion(true);
+        console.log('new_turn for player', myTurn);
+        
+        if(!myTurnRef.current) {
+          // setCanQuestion(true);
         }
-
         if (data['username'] == myUsername.current) {
           setMyTurn(true);
           console.log('MY TURN!');
@@ -275,6 +279,7 @@ function Room(props) {
           setMyTurn(false);
           console.log("NOT MY TURN :(");
         }
+        console.log(myTurn)
         
         setPlayers(players => players.map(player => 
           player.username === data['username'] 
@@ -282,8 +287,6 @@ function Room(props) {
           : {...player, theirTurn: false}));
       }
       else if (message == 'from_bag') {
-        console.log('dostałem litery')
-        console.log(data['letters']);
         dispatch({type: ACTIONS.UPDATE_HAND, sevenLetters: data['letters']});
 
       }
@@ -291,14 +294,17 @@ function Room(props) {
       else if (message == 'game_over') {
         console.log("game over")
         alert(`Koniec gry! Wygrywa: ${data['winners']} z ${data['points']} pkt!`)
+        setGameOn(false);
+        setGameOver(true);
+        // setCanQuestion(false);
       }
 
       else if (message == 'turn_question_response') {
         if (data['incorrect_words'].length > 0) {
-          alert(`Wykryto niepoprawne słowa: ${data['incorrect_words']}`);
+          alert(`Zakwestionowano ostatni ruch.\nRezultat: Wykryto niepoprawne słowa: ${data['incorrect_words']}`);
 
           dispatch({type: ACTIONS.REVERT_BOARD, lettersToRevert: data['letters_to_revert']});
-          setCanQuestion(false);
+          // setCanQuestion(false);
 
           setPlayers(players => players.map(player => 
           player.username === data['username'] 
@@ -306,12 +312,11 @@ function Room(props) {
           : player ));
 
         } else {
-          alert('Poprawny ruch.');
+          alert('Zakwestionowano ostatni ruch.\nRezultat: Poprawny ruch.');
         }
       }
 
       else if (message == 'revert_details') {
-        console.log('Dostaje revert details')
         dispatch({type: ACTIONS.REVERT_HAND, newSevenLetters: data['new_seven_letters']});
         
       }
@@ -361,12 +366,9 @@ function Room(props) {
 
   function legalLettersVertical(letters){
     var [x, startY, endY] = lettersVertical(letters);
-    // console.log(x, startY, endY);
     if (x === startY && x === endY && x == 1){
-      console.log('1 lub 0 liter');
       return false;
     } else if (x === startY && x === endY && x == 0) {
-      console.log('litery nie w linii');
       return false;
     } else {
       if (noSpaceBetweenLettersVertical(x, startY, endY)) return lettersTouchConfirmedOnes(letters);
@@ -434,21 +436,22 @@ function Room(props) {
       } else if (selectedField.current.x == x && selectedField.current.y == y && selectedField.current.onBoard == onBoard) {
         selectedField.current.element.classList.remove('selected')
         selectedField.current = null;
-        console.log('klikam to samo drugi raz')
       } else {
         if (selectedField.current.onBoard && onBoard && !lettersData.grid[y][x].confirmed) {
           dispatch({type: ACTIONS.SWAP_BOARD_BOARD, ob1: selectedField.current, ob2: {y:y, x:x}, myTurn: myTurn});
           selectedField.current.element.classList.remove('selected');
           selectedField.current = null;
-          console.log('zamieniam na boardzie i na boardzie')
+
         } else if (!selectedField.current.onBoard && !onBoard) {
           dispatch({type: ACTIONS.SWAP_HAND_HAND, ob1: selectedField.current, ob2: {y:y, x:x}});
           selectedField.current.element.classList.remove('selected');
           selectedField.current = null;
+
         } else if (selectedField.current.onBoard && !onBoard) {
           dispatch({type: ACTIONS.SWAP_HAND_BOARD, ob1: {y:y, x:x}, ob2: selectedField.current, myTurn: myTurn});
           selectedField.current.element.classList.remove('selected');
           selectedField.current = null;
+
         } else if (!selectedField.current.onBoard && onBoard && !lettersData.grid[y][x].confirmed) {
           dispatch({type: ACTIONS.SWAP_HAND_BOARD, ob1: selectedField.current, ob2: {y:y, x:x}, myTurn: myTurn});
           selectedField.current.element.classList.remove('selected');
@@ -470,36 +473,30 @@ function Room(props) {
   }
 
   function onGameStart(){
-    console.log('przyciskam start');
     socketRef.current.send(JSON.stringify({
       'message': 'game_start'
     }));
   }
 
   function sendLetters(){
-    console.log('chcę wysłać litery!!')
     const letters = getAddedLetters();
     if (legalLetters(letters)) {
-      console.log('correct letters setup!');
 
       var blanks = letters.filter(letter => letter.letter == ' ');
         if (blanks.length) {
-          console.log('Są jakieś niewypełnione blanki!')
           if (!fillingBlanks){
-            console.log('Pierwsza próba wysłania, teraz pojawią się pola do wybrania liter')
             setFillingBlanks(true);
             setBlanks(blanks);
           }
         }
         else {
-          console.log('All OK, sending letters to the server!');
           socketRef.current.send(JSON.stringify({
             'message': 'letters',
             'letters': letters
           }));
           setFillingBlanks(false);
           setBlanks([]);
-          // setMyTurn(false);
+          // setCanQuestion(false);
         }
     } else {
       alert('Nielegalne ustawienie liter!');
@@ -514,8 +511,6 @@ function Room(props) {
 
   function onLettersExchange(){
     setLettersExchanging(true);
-    console.log('wymieniam litery')
-    // wszystkie litery nie confirmed z boarda wrzuć na rękę
   }
 
   function sendLettersToExchange() {
@@ -565,12 +560,12 @@ function Room(props) {
   return (
     <div id='room'>
       <div className='a1'>
-        
-        <h4>{roomCode.current}</h4>
-
         <Board grid={lettersData.grid} lettersPoints={lettersPoints.current} onFieldClick={onFieldClick} />
-        <MyLetters letters={lettersData.sevenLetters} lettersPoints={lettersPoints.current} toExchange={toExchange} onFieldClick={onFieldClick} />
-        
+
+        {isPlaying && 
+          <MyLetters letters={lettersData.sevenLetters} lettersPoints={lettersPoints.current} toExchange={toExchange} onFieldClick={onFieldClick} />
+        }
+
       </div>
       
 
@@ -578,19 +573,19 @@ function Room(props) {
       <div className='a2'>
         {players.map((player, index) => <PlayerElement key={index} playerName={player.username} points={player.points} theirTurn={player.theirTurn} isHost={player.isHost}/> )}
         
-        {isHost && !isGameOn && 
+        {isHost && !isGameOn && !isGameOver &&
           <React.Fragment>
             <button onClick={onGameStart}>ROZPOCZNIJ GRĘ</button>
           </React.Fragment>
         }
         
-        {!isHost && !isGameOn && 
+        {!isHost && !isGameOn && !isGameOver &&
           <React.Fragment>
             <div>Oczekiwanie. Host musi rozpocząć grę.</div>
           </React.Fragment>
         }
 
-        {isGameOn && myTurn && !lettersExchanging &&
+        {isGameOn && myTurn && !lettersExchanging && !isGameOver &&
           <React.Fragment>
             <button onClick={sendLetters}>POTWIERDŹ</button>
             <button onClick={onTurnSkip}>OPUŚĆ KOLEJKĘ</button>
@@ -598,7 +593,7 @@ function Room(props) {
           </React.Fragment>
         } 
 
-        {isGameOn && myTurn && lettersExchanging && 
+        {isGameOn && myTurn && lettersExchanging &&  !isGameOver &&
           <React.Fragment>
             <button onClick={sendLettersToExchange}>WYMIEŃ LITERY</button>
             <button onClick={onExchangeCancel}>ANULUJ</button>          
@@ -606,12 +601,12 @@ function Room(props) {
         }
         <div>Pozostało liter w worku: {inBag}</div>
 
-        {isGameOn && isPlaying &&
-          <button onClick={questionPreviousLetters} disabled={!canQuestion}>ZAKWESTIONUJ UŁOŻONE SŁOWA</button>
+        {isGameOn && isPlaying && !isGameOver &&
+          <button onClick={questionPreviousLetters}>ZAKWESTIONUJ UŁOŻONE SŁOWA</button>
         }
 
         {!isPlaying &&
-          <div>Jesteś obserwatorem gry.</div>
+          <div>Jesteś obserwatorem gry (nick {myUsername.current}).</div>
         }
         
         {blanksData.map((letter, index) => 

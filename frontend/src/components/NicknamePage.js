@@ -36,48 +36,50 @@ function NicknamePage(props) {
   }
 
   return (
-    <Grid container spacing={1}>
-      <Grid item xs={12} align="center">
-        <Typography component="h3" variant="h3">
-          Witaj w ScrabbleSPK!
-        </Typography>
-      </Grid>
+    <div class="stworzPokojNapis">
+      <Grid container spacing={1}>
+        <Grid item xs={12} align="center">
+          <Typography component="h3" variant="h3">
+            Witaj w ScrabbleSPK!
+          </Typography>
+        </Grid>
 
-      <Grid item xs={12} align="center">
-        <Typography component="h4" variant="h4">
-          Wpisz nickname lub wygeneruj:
-        </Typography>
-      </Grid>
+        <Grid item xs={12} align="center">
+          <Typography component="h4" variant="h4">
+            Wpisz nickname lub wygeneruj:
+          </Typography>
+        </Grid>
 
-      <Grid item xs={12} align="center">
-        <TextField
-          value={nickname}
-          label="nickname"
-          required={true}
-          onChange={onTextFieldChange}
-        />
-      </Grid>
+        <Grid item xs={12} align="center">
+          <TextField
+            value={nickname}
+            label="nickname"
+            required={true}
+            onChange={onTextFieldChange}
+          />
+        </Grid>
 
-      <Grid item xs={12} align="center">
-        <Button 
-          color="primary"
-          variant="contained"
-          onClick={generateRandomNickname}
-        >
-          Wygeneruj losowy
-        </Button>
-      </Grid>
-
-      <Grid item xs={12} align="center">
-        <Button 
-          color="secondary"
-          variant="contained"
-          onClick={onNicknameConfirm}
-        >
-          Potwierdź
+        <Grid item xs={12} align="center">
+          <Button 
+            color="primary"
+            variant="contained"
+            onClick={generateRandomNickname}
+          >
+            Wygeneruj losowy
           </Button>
+        </Grid>
+
+        <Grid item xs={12} align="center">
+          <Button 
+            color="secondary"
+            variant="contained"
+            onClick={onNicknameConfirm}
+          >
+            Potwierdź
+            </Button>
+        </Grid>
       </Grid>
-    </Grid>
+    </div>
   );
 }
 

@@ -30,65 +30,68 @@ function RoomCreatePage(props) {
   }
 
   return (
-    <Grid container spacing={1}>
-      <Grid item xs={12} align="center">
-        <Typography component="h4" variant="h4">
-          Stwórz pokój gry!
-        </Typography>
-      </Grid>
-      <Grid item xs={12} align="center">
-        <FormControl component="fieldset">
-          <FormHelperText>
-            <div align="center">Prywatność pokoju</div>
-          </FormHelperText>
-          <RadioGroup
-            row
-            defaultValue="true"
-            onChange={handleRoomPrivacy}
+    <div class="stworzPokojNapis">
+      <Grid container spacing={1}>
+        <Grid item xs={12} align="center">
+          <Typography component="h4" variant="h4">
+            Stwórz pokój gry!
+          </Typography>
+        </Grid>
+        <Grid item xs={12} align="center">
+          <FormControl component="fieldset">
+            <FormHelperText>
+              <div align="center">Prywatność pokoju</div>
+            </FormHelperText>
+            <RadioGroup
+              row
+              defaultValue="true"
+              onChange={handleRoomPrivacy}
+            >
+              <FormControlLabel
+                value="true"
+                control={<Radio color="primary" />}
+                label="Publiczny"
+                labelPlacement="bottom"
+              />
+              <FormControlLabel
+                value="false"
+                control={<Radio color="secondary" />}
+                label="Prywatny"
+                labelPlacement="bottom"
+              />
+            </RadioGroup>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} align="center">
+          <FormControl>
+            <TextField
+              required={true}
+              type="number"
+              onChange={onPlayersLimitChange}
+              defaultValue={4}
+              inputProps={{
+                min: 2,
+                max: 4,
+                style: { textAlign: "center" },
+              }}
+            />
+            <FormHelperText>
+              <div align="center">Maksymalna liczba graczy</div>
+            </FormHelperText>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} align="center">
+          <Button
+            color="primary"
+            variant="contained"
+            onClick={onRoomCreate}
           >
-            <FormControlLabel
-              value="true"
-              control={<Radio color="primary" />}
-              label="Publiczny"
-              labelPlacement="bottom"
-            />
-            <FormControlLabel
-              value="false"
-              control={<Radio color="secondary" />}
-              label="Prywatny"
-              labelPlacement="bottom"
-            />
-          </RadioGroup>
-        </FormControl>
+            Stwórz pokój
+          </Button>
+        </Grid>
       </Grid>
-      <Grid item xs={12} align="center">
-        <FormControl>
-          <TextField
-            required={true}
-            type="number"
-            onChange={onPlayersLimitChange}
-            defaultValue={4}
-            inputProps={{
-              min: 1,
-              max: 4,
-              style: { textAlign: "center" },
-            }}
-          />
-          <FormHelperText>
-            <div align="center">Maksymalna liczba graczy</div>
-          </FormHelperText>
-        </FormControl>
-      </Grid>
-      <Grid item xs={12} align="center">
-        <Button
-          color="primary"
-          variant="contained"
-          onClick={onRoomCreate}
-        >
-          Stwórz pokój
-        </Button>
-      </Grid>
-    </Grid>
+    </div>
+
   );
 }
 

@@ -12,13 +12,14 @@ import random
 @api_view(['GET'])
 def roomList(request):
     rooms = Room.objects.all()
+    rooms = list(filter(lambda x: x.is_public, rooms))
     serializer = RoomSerializer(rooms, many=True)
     return Response(serializer.data)
 
 
 @api_view(['GET'])
 def roomDetails(request, pk):
-    room = Room.objects.get(id=pk)
+    room = Room.objects.get(code=pk)
     serializer = RoomSerializer(room, many=False)
     return Response(serializer.data)
 
@@ -26,10 +27,9 @@ def roomDetails(request, pk):
 @api_view(['POST'])
 def createRoom(request):
     if not request.session.exists(request.session.session_key):
-        return Respone('Cannot create a room for a user without a session.')
+        return Response('Cannot create a room for a user without a session.')
 
     serializer_data = request.data
-    serializer_data['host'] = request.session.session_key
     serializer_data['host_name'] = request.session['nickname']
     serializer = RoomSerializer(data=serializer_data)
 
